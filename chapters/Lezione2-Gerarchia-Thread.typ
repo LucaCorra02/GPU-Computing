@@ -471,3 +471,41 @@ Prorietà di un kernel. Sono dei qualificatori:
 - $mb("__host__")$: 
   - Può essere omesso
   - Computata e chiamata solo dalla CPU
+
+  == CUDA con Numba
+
+  Per definire un kernel in Numba, dobbiamo: 
+  - Usare il decoratore ``` @cuda.jit```
+  - *Non* ha valore di ritorno
+  - Tutti gli output del kernel, devono essere scritti negli array passati come argomenti
+  - La configurazione è specificata come $"grid" & "block"$
+
+  ```py
+  from numba import cuda
+  
+  @cuda.jit
+  def my_kernel(a, b, out):
+    ...
+  
+  threadsperblock = 32
+  blockspergrid = (array.size + (threadsperblock - 1)) // threadsperblock
+  my_kernel[blockspergrid, threadsperblock](a, b, out)
+  cuda.synchronize()
+  ```
+  il numero totale di thread è dato da $"blockspergrid" * "threadsperblock"$. 
+
+  #attenzione()[
+    L'esecuzione del kernel avviene in modo asincrono. Lato host bisogna usare ``` cuda.synchronize()``` per aspettare i risultati dai thread. 
+  ]
+
+  Per ogni thread è possibile avere le seguenti dimensioni: 
+  - ``` cuda.threadIdx``` = index del thread dentro il blocco
+  - ``` cuda.blockIdx``` = indice del blocco nella griglia
+  - ``` cuda.blockDim``` = dimensione del blocco 
+  - ``` cuda.gridDim``` = dimensione della griglia
+
+  Numba fornisce anche due funzioni per calcolare la *posizione assoluta* di un *thread*:
+  - ``` cuda.grid(ndim)``` = indice assoluto del thread nella griglia
+  -  ``` cuda.gridsize(ndim)``` = numero totale di thread nella griglia
+
+  
