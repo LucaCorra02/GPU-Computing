@@ -505,7 +505,44 @@ Prorietà di un kernel. Sono dei qualificatori:
   - ``` cuda.gridDim``` = dimensione della griglia
 
   Numba fornisce anche due funzioni per calcolare la *posizione assoluta* di un *thread*:
-  - ``` cuda.grid(ndim)``` = indice assoluto del thread nella griglia
+  - ``` cuda.grid(ndim)``` = *indice assoluto* del thread nella griglia
   -  ``` cuda.gridsize(ndim)``` = numero totale di thread nella griglia
 
-  
+=== Trasferimento dati in numba
+
+La GPU e la CPU hanno due memorie separate. I trasferimenti di dati devono sempre seguire l'ordine $"CPU" -> "GPU" -> "CPU"$.
+
+#nota()[
+  Il trasferimento di dati può essere in molti casi il bottleneck
+]
+
+Numba trasferisce automaticamente gli array Numpy alla GPU, tuttavia lo fa in una maniera *conservativa*. Quando il kernel ha finito, i dati vengono copiati nell'host. \
+Questo comportamento a volte può essere un $mr("problema")$:
+- Trasferimenti non necessari -> sprecano banda
+
+Tuttavia Numba, mette a disposizione delle API in grado di :
+- Allocare la memoria sulla GPU
+- Copiare i dati solamente quando serve
+- Mantenere dati sul device tra kernel
+
+=== Device Arrays
+
+Permettono di allocare un array vuoto direttamente sull GPU 
+```py
+numba.cuda.device_array(
+  shape,
+  dtype=np.float64,
+  strides=None,
+  order='C',
+  stream=0
+)
+```
+il vantaggio è che la memoria viene allocata solo lato device, inoltre non vengono ricopiati automaticamente sul host.  
+#nota()[
+  Stesso comportamento di ``` numpy.empty()``` lato host
+]
+*Quando usarli*: 
+- Buffer di output
+- Risultati intermedi
+- Dati che devono rimanere sulla GPU per più kernel
+
