@@ -230,7 +230,7 @@ Spesso è necessario un controllo quando la dim di griglia non collima con quell
       
       // Label (ix, iy)
       content(
-        (target_x + block_size/2 + 0.5, target_y + block_size/2),
+        (target_x + block_size/2 + 0.7, target_y+-0.2 + block_size/2),
         text(fill: red, weight: "bold", size: 8pt)[(ix, iy)]
       )
       
@@ -441,7 +441,7 @@ Spesso è necessario un controllo quando la dim di griglia non collima con quell
     Totale thread = $3*2*3*3 = 54 $
   ]
 )
-/*
+*/
 
 
 
