@@ -541,8 +541,29 @@ il vantaggio è che la memoria viene allocata solo lato device, inoltre non veng
 #nota()[
   Stesso comportamento di ``` numpy.empty()``` lato host
 ]
+
+```py 
+  n = 1024
+  # d_out vive esclusivamente sulla GPU
+  d_out = cuda.device_array((n,),dtype=np.float32)
+```
 *Quando usarli*: 
 - Buffer di output
 - Risultati intermedi
 - Dati che devono rimanere sulla GPU per più kernel
 
+=== Funzioni di trasferimento
+
+la funzione ```py cuda.device_array_like(h_a)``` permette di *creare un device array* utilizando la dimensione di un'altro array già esistente. Solitamente si usa il seguente pattern: 
+```py
+# Host array
+h_a = np.random.rand(1024).astype(np.float32)
+# Device array, solamente output
+d_b = cuda.device_array_like(h_a)
+```
+
+Per il trasferimento da *Host $->$ Device*, viene utilizzata la funzione ```py numba.cuda.to_device(obj,stream=0, copy=True, to=None)```:
+- ``` to=existing_device_array```, usa memoria già allocata
+- ``` stream``` = abilità il trasferimento asincrono 
+
+Per il trasferimento Device $->$ Host, viene utilizzata la funzione ```py copy_to_host()```.
