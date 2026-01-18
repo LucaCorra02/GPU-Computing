@@ -173,6 +173,7 @@ Spesso è necessario un controllo quando la dim di griglia non collima con quell
   if (ix < "blockDim".x & ix < "blockDim".y) // va bene
 ```
 
+
 #attenzione()[
   Il controllo è *obbligatorio*. Siccome il kernel accetta due dimensioni (numero di blocchi per griglia, numero di thread per blocco) può essere che la divisione logica non sia intera (approssimazione ``` ceil```). Il controllo evita accessi ``` out_of_bound``` sulla struttura originale.
 ]
