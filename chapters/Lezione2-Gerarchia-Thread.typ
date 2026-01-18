@@ -5,7 +5,7 @@
 == Architettura GPU
 
 Una GPU è composta da molti streaming multiprocessors (*SMs*). Ognuno di essi contiene molte unità funzionali (un certo blocco di core). Essi dispongono di una memoria privata, cache e register file. \
-A loro volta gli SMs, sono raggruppati in cluster, chiamati Graphics processing clusters (*GPCs*). Essi lavorano condividendo un'unica memoria (L2, cache). La GPU non è altro che un insieme di GPCs.
+A loro volta gli SMs, sono raggruppati in cluster, chiamati Graphics processing clusters (*GPCs*). Essi lavorano condividendo un'unica memoria (L2 cache). La GPU non è altro che un insieme di GPCs.
 
 La CPU (host) è connessa alla GPU tramite degli appositi canali. 
 
@@ -14,12 +14,12 @@ La CPU (host) è connessa alla GPU tramite degli appositi canali.
 Pensare in parallelo, significa avere chiaro quali *feature* la *GPU* espone al programmatore: 
 - è essenziale conoscere l'architettura della GPU per scalare su migliaia di thread come fosse uno. 
 - gestire la cache, in modo da sfruttare il *principio di località*.
-- conoscere lo *scheduling* dei blocchi di thread. Se il blocco di thread è molto esoso in termini di risorse, potrebbe essere eseguito in modo singolare durante un certo istante di tempo.
+- conoscere lo *scheduling* dei blocchi di thread. Se il blocco di thread è molto esoso in termini di risorse, potrebbe essere eseguito in modo singolare sulla GPU durante un certo istante di tempo.
 - gestire le *sincronizzazioni*. I thread a volte potrebbero dover cooperare nella GPU. Bisogna effettuare una sincronizzazione all'interno dei blocchi logici di thread. 
 
-CUDA, permette al programmatore di gestire i thread e la memoria dati.
+CUDA permette al programmatore di gestire i thread e la memoria dati.
 #attenzione[
-  Le operazioni di lancio del kernel, sono sempre asincrone. Mentre le operazioni in memoria per definizione sono sincrone, in modo da garantire l'integrità dei dati.   
+  Le operazioni di lancio del kernel sono sempre asincrone. Mentre le operazioni in memoria, per definizione, sono sincrone. Questo permette di garantire l'integrità dei dati.   
 ]
 
 Infine il compilatore (_nvcc_) deve generare codice eseguibile per host(linguaggio _C_ o altro) e device (_Cuda C_), l'output di questa fase prende il nome di *fat binary*.   
@@ -28,7 +28,7 @@ Infine il compilatore (_nvcc_) deve generare codice eseguibile per host(linguagg
 
 In generale, lo schema da seguire è sempre lo stesso: 
 - copiare i dati da elaborare dalla CPU alla GPU
-- caricare ed eseguire il programma in GPU. Esso caricare i dati nella cache della GPU, in modo da migliorare le performance. 
+- caricare ed eseguire il programma in GPU. Caricare i dati nella cache della GPU, in modo da migliorare le performance. 
 - copiare i dati dalla memoria della GPU alla memoria della CPU.  
 
 == Gerarchia dei thread
@@ -37,27 +37,27 @@ CUDA presenta una *gerarchia astratta* di thread, strutturata su due livelli:
 - *grid*: una griglia ordinata di blocchi
 - *block*: una collezione ordinata di thread. 
 
-La struttura a _blocchi_ permette alla GPU di distribuire il lavoro. I blocchi vengono assegnati ai vari SM disponibili. Una GPU potente con molti SM, eseguirà più blocchi contemporaneamente. Questo permette di scrivere il codice una volta sola e farlo "scalare" su hardware diverso.
+La struttura a _blocchi_ permette alla GPU di distribuire il lavoro. I blocchi vengono assegnati ai vari SM disponibili. Una GPU potente con molti SM eseguirà più blocchi contemporaneamente. Questo permette di scrivere il codice una volta sola e farlo "scalare" su hardware diverso.
 
 #informalmente()[
-  Sebbene la memoria fisica della GPU sia sempre lineare (una lunga sequenza di byte 1D), per i programmatori è difficile ragionare solo in termini lineari se il problema è geometrico. Per questo motivo si usa questa organizzazione logica. 
+  Sebbene la memoria fisica della GPU sia sempre lineare (una lunga sequenza di byte 1D), per i programmatori è difficile ragionare solo in termini lineari se il problema da risolvere è geometrico. Per questo motivo si usa una organizzazione logica astratta. 
 ]
 
-Sia le griglie che i blocchi possono avere una dimensione ($1D$, $2D$ o $3D$).
+Sia le griglie che i blocchi possono avere una *dimensione* ($1D$, $2D$ o $3D$).
 #nota[
   In generale si usa la stessa dimensione sia per le griglie che i blocchi
 ]
-La scelta delle dimensioni avviene in base ai dati che si vuole elaborare.
+La scelta del numero di dimensioni avviene in base ai dati che si vuole elaborare.
 
 Le dimensioni vengono gestite nel seguente modo:
 - *$"grid"(mb(x),mr(y),mg(z))$*: 
   - $mb(x)$ = Numero di blocchi in una riga 
-  - $mr(z)$ = Numero di righe di blocchi 
+  - $mr(y)$ = Numero di righe di blocchi 
   - $mg(z)$ = Profondità 
 
 - *$"block"(mb(x),mr(y),mg(z))$*: 
   - $mb(x)$ = Numero di thread in una riga del blocco  
-  - $mr(z)$ = Numero di righe del blocco
+  - $mr(y)$ = Numero di righe del blocco
   - $mg(z)$ = Profondità 
 
 Per ottenere il numero totale di thread basta moltiplicare tutte le dimensioni di grid e block tra di loro. 
@@ -77,16 +77,16 @@ Un *blocco* è quindi un gruppo di thread che possono cooperare tra loro (anche 
 ]
 
 Ogni *thread è identificato univocamente* da due coordinate (sono delle vartiabili built-in):
-- *$"blockIdx"(x,y,z)$* (indice del blocco all'interno della grid). Tipo ``` uint3```
-- *$"threadIdx"(x,y,z)$* (indice di thread nel blocco). Tipo ``` uint3```
+- *$"blockIdx"(x,y,z)$* indice del blocco all'interno della grid. Tipo ``` uint3```
+- *$"threadIdx"(x,y,z)$* indice di thread nel blocco. Tipo ``` uint3```
 
 Tali variabili vengono pre-inizializzate e possono essere accedute all'interno del kernel. Quando un kernel viene eseguito ``` blockIdx``` e ``` threadIdx``` vengono assegnate a ogni thread da CUDA *runtime*.
 
 === Dati lineari (1D)
 
-Si usa una griglia 1D, quando il dato da elaborare è un array (dato in sequenza). Per identificare un dato della struttura originale basta una cordinata $x$. 
+Si usa una griglia 1D quando il dato da elaborare è un array (dato in sequenza). Per identificare un dato della struttura originale basta una singola coordinata $x$. 
 
-Per ottenere un thread ID univoco globale, indipendente dalla disposizione adottata, si usa la seguente *indicizzazione*: 
+Per ottenere un thread ID univoco a livello globale, indipendente dalla disposizione logica adottata, si usa la seguente *indicizzazione*: 
 $
   "ID"_{"th"} = underbrace(mr("blockIdx".x * "blockDim".x), "salta i blocchi precedenti") + underbrace(mb("threadIdx".x),"posizione locale del thread")
 $
@@ -172,6 +172,10 @@ Spesso è necessario un controllo quando la dim di griglia non collima con quell
 ```
   if (ix < "blockDim".x & ix < "blockDim".y) // va bene
 ```
+
+#attenzione()[
+  Il controllo è *obbligatorio*. Siccome il kernel accetta due dimensioni (numero di blocchi per griglia, numero di thread per blocco) può essere che la divisione logica non sia intera (approssimazione ``` ceil```). Il controllo evita accessi ``` out_of_bound``` sulla struttura originale.
+]
 
 #figure(
   {
