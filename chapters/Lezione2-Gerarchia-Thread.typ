@@ -567,3 +567,66 @@ Per il trasferimento da *Host $->$ Device*, viene utilizzata la funzione ```py n
 - ``` stream``` = abilità il trasferimento asincrono 
 
 Per il trasferimento Device $->$ Host, viene utilizzata la funzione ```py copy_to_host()```.
+
+=== Esempio: Fibonacci
+#link("https://colab.research.google.com/drive/1H_67B-cdnNXElwzpk9BCSY4lmvKE8eta?authuser=1#scrollTo=2XXzzmph7dQ1")[
+  Lezione $2$ su colab
+].
+Data una matrice $v$ di dimensione $n * n$, restituire una matrice in output dove: 
+$
+  v[i][j] = 0 "se" "is_Fib"(i + j) = "False" \ 
+  v[i][j] = 1 "se" "is_Fib"(i + j) = "True"
+$
+
+#nota()[
+  - Il bound degli indici nel kernel è *obbligatorio*. A casua della funzione di ``` ceil```, potremmo eseguire più blocchi del necessario. 
+  - Per quanto riguarda la divisione in blocchi, le GPU moderne eseguono i thread in gruppi indivisibili chiamati *Wrap*. Le GPU moderne preferiscono blocchi con più wrap per blocco. Solitamente si opra per blocchi da $16*16 = 256$ thread, oppure $32*8 = 256$ thread (sfrutta la coalescing della memoria).
+]
+
+```py
+
+import numpy as np
+from numba import cuda
+import math
+import matplotlib.pyplot as plt
+
+@cuda.jit(device=True, inline=True)
+def is_perfect_square(m):
+    if m < 0: return False
+    tmp = int(m**0.5)
+    return True if tmp * tmp == m else False
+
+@cuda.jit(device=True, inline=True)
+def is_fibonacci(v):
+    if v < 0: return 0
+    if is_perfect_square(5*(v**2) + 4) or is_perfect_square(5*(v**2) - 4):
+        return 1
+    return 0
+
+@cuda.jit
+def fibonacci_kernel_2D(out):
+    #coordinate assolute del thread nella griglia
+    x, y = cuda.grid(2)
+    if x < out.shape[0] and y < out.shape[1]:
+        val_to_check = abs(x - y)
+        out[x, y] = 1 if is_fibonacci(val_to_check) else 0
+
+def main():
+    n = 1024  # Dimensione matrice (pixel)
+    out = np.zeros((n, n), dtype=np.int32)
+    d_out = cuda.to_device(out) 
+
+    threads_per_block = (32, 8) # 64 thread
+    #Numero di blocchi che servono a coprire la matrice
+    blocks_per_grid_x = math.ceil(n / threads_per_block[0])
+    blocks_per_grid_y = math.ceil(n / threads_per_block[1])
+    blocks_per_grid = (blocks_per_grid_x, blocks_per_grid_y)
+
+    fibonacci_kernel_2D[blocks_per_grid, threads_per_block](d_out)
+    cuda.synchronize()
+    ris = d_out.copy_to_host()
+
+if __name__ == "__main__":
+    main()
+
+```
