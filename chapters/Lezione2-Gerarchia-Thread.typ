@@ -571,7 +571,7 @@ Per il trasferimento da *Host $->$ Device*, viene utilizzata la funzione ```py n
 - ``` to=existing_device_array```, usa memoria già allocata
 - ``` stream``` = abilità il trasferimento asincrono 
 
-Per il trasferimento Device $->$ Host, viene utilizzata la funzione ```py copy_to_host()```.
+Per il trasferimento *Device $->$ Host*, viene utilizzata la funzione ```py copy_to_host()```.
 
 === Esempio: Fibonacci
 #link("https://colab.research.google.com/drive/1H_67B-cdnNXElwzpk9BCSY4lmvKE8eta?authuser=1#scrollTo=2XXzzmph7dQ1")[
