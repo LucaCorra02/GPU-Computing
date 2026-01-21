@@ -437,40 +437,170 @@ Anche le memorie sono improntante a dimensione $32$.
 
 == Branch control
 
-I *branch* rendono inefficiente il sistema. Quando un branch viene eseguito esso causa una "divisione" del flusso di esecuzione, un thread ID segue una strda e un altro thread ID un'altra. é possibile riorganizzare i dati a livello di warp e non di thread. 
+I *branch* rendono inefficiente il sistema. Quando un branch viene eseguito esso causa una "divisione" del flusso di esecuzione. All'interno di un warp due thread potrebbe seguire percorsi diversi, rendendo necessaria la *sincronizzazione*. 
+
+I gruppi di thread così creati, non sono più eseguiti in modo parallelo ma in modo sequenziale.
+
+
+#esempio()[
+  #figure(
+  grid(
+    columns: (0.5fr, 1.0fr),
+    column-gutter: 1em,
+    [
+      // Left side - Code
+      #set text(size: 11pt)
+      ```c
+      if(threadIdx.x % 2 == 0){
+        a = r(t);
+      }else{
+        a = q(t);
+      }
+      y = f(a);
+      ```
+    ],
+    [
+      // Right side - Warp lanes visualization
+      #import cetz.draw: *
+      #cetz.canvas({
+        let lane_width = 0.45
+        let lane_height = 0.4
+        
+        // Title
+        content((2, 4.8), text(fill: black, size: 10pt, weight: "bold")[Warp Lanes])
+        
+        // Draw lanes 0-5 and 31
+        for i in range(6) {
+          let x = i * lane_width
+          let color = rgb(150, 200, 100)
+          
+          rect((x, 3.8), (x + lane_width, 4.2),
+               fill: color,
+               stroke: black)
+          
+          content((x + lane_width/2, 4),
+                  text(fill: white, size: 8pt, weight: "bold")[#i])
+        }
+        
+        // Dots
+        content((6 * lane_width + 0.3, 4), text(fill: black, size: 11pt)[...])
+        
+        // Lane 31
+        let x31 = 7.5 * lane_width
+        rect((x31, 3.8), (x31 + lane_width, 4.2),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        content((x31 + lane_width/2, 4),
+                text(fill: white, size: 8pt, weight: "bold")[31])
+        
+        for i in range(6) {
+          let x = i * lane_width
+          let is_even = calc.rem(i, 2) == 0
+          let color = if is_even { rgb(150, 200, 100) } else { gray.lighten(40%) }
+          
+          rect((x, 3), (x + lane_width, 3.4),
+               fill: color,
+               stroke: black)
+          
+          content((x + lane_width/2, 3.2),
+                  text(fill: if is_even { white } else { gray }, size: 8pt, weight: "bold")[#i])
+        }
+        
+        content((6 * lane_width + 0.3, 3.2), text(fill: black, size: 11pt)[...])
+        
+        // Lane 31 (odd - idle)
+        rect((x31, 3), (x31 + lane_width, 3.4),
+             fill: gray.lighten(40%),
+             stroke: black)
+        content((x31 + lane_width/2, 3.2),
+                text(fill: gray, size: 8pt, weight: "bold")[31])
+        
+        
+        
+        for i in range(6) {
+          let x = i * lane_width
+          let is_odd = calc.rem(i, 2) == 1
+          let color = if is_odd { rgb(150, 200, 100) } else { gray.lighten(40%) }
+          
+          rect((x, 1.6), (x + lane_width, 2),
+               fill: color,
+               stroke: black)
+          
+          content((x + lane_width/2, 1.8),
+                  text(fill: if is_odd { white } else { gray }, size: 8pt, weight: "bold")[#i])
+        }
+        
+        content((6 * lane_width + 0.3, 1.8), text(fill: black, size: 11pt)[...])
+        
+        // Lane 31 (odd - active)
+        rect((x31, 1.6), (x31 + lane_width, 2),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        content((x31 + lane_width/2, 1.8),
+                text(fill: white, size: 8pt, weight: "bold")[31])
+        
+        
+        for i in range(6) {
+          let x = i * lane_width
+          let color = rgb(150, 200, 100)
+          
+          rect((x, 0.8), (x + lane_width, 1.2),
+               fill: color,
+               stroke: black)
+          
+          content((x + lane_width/2, 1),
+                  text(fill: white, size: 8pt, weight: "bold")[#i])
+        }
+        
+        content((6 * lane_width + 0.3, 1), text(fill: black, size: 11pt)[...])
+        
+        // Lane 31 final
+        rect((x31, 0.8), (x31 + lane_width, 1.2),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        content((x31 + lane_width/2, 1),
+                text(fill: white, size: 8pt, weight: "bold")[31])
+        
+      })
+    ]
+  ),
+  caption: [
+    Visualizzazione della *warp divergence*.\
+    I $mg("thread")$ pari eseguono `r(t)` mentre i dispari sono mascherati.\
+    Succesivamente i thread dispari eseguono `q(t)` mentre i pari sono mascherati.\
+    Il *$mr("throughput viene dimezzato")$* perché servono $2$ cicli invece di $1$.
+  ]
+) <warp-lanes-divergence>
+  
+
+
+  
+]
+
+
+
+
+La soluzione é *riorganizzare i thread a livello di warp*, in modo che non si verifichino attese. 
 
 #attenzione()[
-  Non è detto che c'è un assocazione 1:1 thread e dati, ovvero il primo dato corrisponde al thread con ID 1. Ma posso lavorare modulo la dimensione di warp 
+  *Non* è obbligatorio che ci sia un assocazione 1:1 thread e dati, ovvero il primo dato corrisponde al thread con $"ID" 1$. L'idea è lavorare modulo la dimensione di warp.
 ]
 
-=== Cluster
+L'$mg("obiettivo")$ è far sì che *tutti i thread dello stesso warp prendano la stessa decisione*:
 
-Possiamo associare più bloccho ad un cluster. I blocchi nello stesso cluster possono cooperare tra di loro. Aggungiamo un overhead di gestione per permette di gestire strutture dati più grandi. 
+- *Ordinamento dei Dati*: Ad esempio se stiamo processando un array dove alcuni elementi richiedono un calcolo pesante (ramo $A$) e altri no (ramo $B$), possiamo prima ordinare l'array raggruppando tutti gli elementi "pesanti" insieme e quelli "leggeri" insieme.
 
-Nella situazione ci sono dei gruppi fisici di SM (GPC) che permettono questa cooperazione
-
-=== Divergenza ed esecuzione
-
-//Aggiugnere immagine ed esempio
-i branch nel codice  spezzano i thread del warp in due. I thread non sono più eseguiti in modo parallelo ma in modo sequenziale. Di 32 linee paralle divido in due plotoni da 16
-
-i branch vanno a inficiare sui warp, posso organizzare il codice per far si che non accada a livello di warp. 
-
-//Aggiungere esempio
-#esempio()[
-  Spalma in due gruppi i warp. i branch *non hanno un impatto banale*. 
-
-  Situazione ideale se avessi un array di 64 dovrei dire che i primi 32 si occupano dei pari e gli altri dei dispari. Posso sempre ragionare a gruppi di 32.  
-]
+- *Mapping dei thread*: Se non è possibile spostare i dati, possiamo cambiare il modo in cui i thread scelgono su quale dato lavorare. L'idea è raggruppare thread che hanno un alta probabilità di seguire lo stesso percorso logico.
 
 === Sincronizzazione
+
+Nel modello *SIMT*, ogni thread può fare strade diverse. Ciascun threa può seguire un flusso "indipendente", richiedendo tempi diversi rendendo neccessaria . Richiede sincronizzazione, quando si riparte con la prossima istruzione dobbiamo essere sicuri che i thread siano tutti allo stesso punto. 
 
 //aggiungere immagine
 #nota()[
   Sincronizzazione livello di blocco principalmente (anche se esite per il warp )
 ]
 
-Nel modello SIMT ogni thread può fare strade diverse. Ogni thread ha un flusso e può richiedere tempi diversi. Richiede sincronizzazione, quando si riparte con la prossima istruzione dobbiamo essere sicuri che i thread siano tutti allo stesso punto. 
 
 in C esistono una serie di primitive: 
 - ``` syncthreads``` = a un certo punto del codice kernel compare questa istruzione (interpretata da runtime CUDA). intriduce una barriera per i thread del blocco 
@@ -480,7 +610,11 @@ in C esistono una serie di primitive:
 Ogni thread ha un proprio progam counter PC (ognuno ha un registro). Di conseguenza i thread possono essere gestiti con divergenza e ri-convergere anche a livello di warp.  (poco interessante per il prof?)
 
 
+=== Cluster
 
+Possiamo associare più bloccho ad un cluster. I blocchi nello stesso cluster possono cooperare tra di loro. Aggungiamo un overhead di gestione per permette di gestire strutture dati più grandi. 
+
+Nella situazione ci sono dei gruppi fisici di SM (GPC) che permettono questa cooperazione
 
 
 
