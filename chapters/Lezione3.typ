@@ -274,57 +274,170 @@ Entra in funzione quando l'Host (CPU) lancia un Kernel:
   Una volta che un blocco è assegnato a un SM, ci rimane fino alla fine della sua esecuzione. *Non* può "migrare" su un altro SM.
 ]
 
+#figure(
+  {
+    import cetz.draw: *
+    
+    cetz.canvas({
+      // Title at top
+      content((1.7, 7.2), text(fill: black, weight: "bold", size: 10pt)[Grid of Thread Blocks])
+      
+      // Main grid of blocks (8x16) - made larger
+      let block_size = 0.3
+      let grid_start_x = 0.5
+      let grid_start_y = 1.5
+      
+      // Define some highlighted blocks with their colors as array of tuples
+      let highlighted = (
+        ((2, 5), rgb(255, 100, 255)),   // Pink/Magenta
+        ((3, 9), rgb(200, 150, 255)),   // Light purple
+        ((5, 3), rgb(255, 150, 255)),   // Pink
+        ((7, 11), rgb(150, 200, 255)),  // Light blue
+        ((9, 2), rgb(100, 150, 255)),   // Blue
+        ((11, 7), rgb(150, 100, 200)),  // Purple
+      )
+      
+      // Draw main grid
+      for row in range(16) {
+        for col in range(8) {
+          let x = grid_start_x + col * block_size
+          let y = grid_start_y + (15 - row) * block_size
+          
+          let color = rgb(100, 180, 100)  // Default green
+          
+          // Check if this block is highlighted
+          for item in highlighted {
+            let coords = item.at(0)
+            let h_color = item.at(1)
+            if row == coords.at(0) and col == coords.at(1) {
+              color = h_color
+            }
+          }
+          
+          rect((x, y), (x + block_size, y + block_size),
+               fill: color,
+               stroke: (paint: black, thickness: 0.5pt))
+        }
+      }
+      
+      // Dots below first grid
+      content((2, 1), text(fill: black, size: 12pt, weight: "bold")[. . .])
+      
+      // Second smaller grid below (partially visible)
+      let grid2_y = 0.2
+      for row in range(2) {
+        for col in range(8) {
+          let x = grid_start_x + col * block_size
+          let y = grid2_y - row * block_size
+          
+          rect((x, y), (x + block_size, y + block_size),
+               fill: rgb(100, 180, 100),
+               stroke: (paint: black, thickness: 0.5pt))
+        }
+      }
+      
+      // Right side - Active Thread Blocks label
+      content((6.3, 7.2), text(fill: black, weight: "bold", size: 9pt)[Active Thread Blocks])
+      
+      // First SM box
+      rect((5, 5.5), (7.5, 6.8), fill: rgb(200, 230, 200), stroke: (paint: black, thickness: 1pt))
+      content((6.25, 6.15), text(fill: black, weight: "bold", size: 10pt)[SM])
+      
+      // Active blocks for first SM (3 small rectangles)
+      let active1_colors = (rgb(255, 100, 255), rgb(200, 150, 255), rgb(255, 150, 255))
+      for i in range(3) {
+        rect((5.3, 6.4 - i * 0.28), (5.7, 6.65 - i * 0.28),
+             fill: active1_colors.at(i),
+             stroke: (paint: black, thickness: 0.5pt))
+      }
+      
+      // Arrows from highlighted blocks to first SM
+      line((grid_start_x + 5 * block_size, grid_start_y + 10.5 * block_size), 
+           (5, 6.3), stroke: (paint: black, thickness: 0.8pt))
+      line((grid_start_x + 9 * block_size, grid_start_y + 5.5 * block_size), 
+           (5, 6.0), stroke: (paint: black, thickness: 0.8pt))
+      line((grid_start_x + 3 * block_size, grid_start_y + 13 * block_size), 
+           (5, 6.5), stroke: (paint: black, thickness: 0.8pt))
+      
+      // Dots between SMs
+      content((6.25, 4.8), text(fill: black, size: 12pt, weight: "bold")[. . .])
+      
+      // Second SM box
+      rect((5, 2.5), (7.5, 3.8), fill: rgb(200, 230, 200), stroke: (paint: black, thickness: 1pt))
+      content((6.25, 3.15), text(fill: black, weight: "bold", size: 10pt)[SM])
+      
+      // Active blocks for second SM
+      let active2_colors = (rgb(150, 200, 255), rgb(100, 150, 255), rgb(150, 100, 200))
+      for i in range(3) {
+        rect((5.3, 3.4 - i * 0.28), (5.7, 3.65 - i * 0.28),
+             fill: active2_colors.at(i),
+             stroke: (paint: black, thickness: 0.5pt))
+      }
+      
+      // Arrows from highlighted blocks to second SM
+      line((grid_start_x + 11 * block_size, grid_start_y + 3.5 * block_size), 
+           (5, 3.3), stroke: (paint: black, thickness: 0.8pt))
+      line((grid_start_x + 2 * block_size, grid_start_y + 10 * block_size), 
+           (5, 3.0), stroke: (paint: black, thickness: 0.8pt))
+      line((grid_start_x + 7 * block_size, grid_start_y + 8 * block_size), 
+           (5, 2.8), stroke: (paint: black, thickness: 0.8pt))
+    })
+  },
+  caption: [
+    Schedulazione dei blocchi sui Streaming Multiprocessor (SM).\
+    I blocchi colorati nella grid vengono assegnati dinamicamente agli SM disponibili
+  ]
+)
+
+
 === Block scheduling
 
+I blocchi vengono assegnati in maniera *dinamica* agli SM (contiene molte unità funzionali e risorse) man mano che le risorse diventano disponibili. 
 
+L'SM ha il compito di gestire uno o più blocchi. Un SM *accetta un nuovo blocco solo se ha abbastanza risorse* hardware (registri e Shared Memory) per ospitare tutti i thread di quel blocco.
 
+#nota()[
+  I blocchi in una griglia sono tra di loro *indipendenti*, non si hanno garanzie sull'ordine di esecuzione. 
+]
 
+Appena un blocco viene caricato sull'SM, viene logicamente suddiviso in Warps.
 
+#attenzione()[
+  é importante che un certo blocco *non* dipenda dal risultato di altri blocchi.
+
+  La cooperazione inoltre avviene solamente all'interno del blocco (tranne casi particolari).
+]
 
 === Warp scheduling
 
-== Branch control
+All'interno di ogni SM ci sono dei *Warp Scheduler*. Il loro compito è decidere quale warp deve eseguire un'istruzione in un certo istante (ciclo di clock).
+
+Il meccanismo prende il nome di *latency hiding*:
+- lo scheduler ha una lista di tutti i warp presenti sull'SM.
+
+- controlla quali warp sono "pronti" (Ready) e quali sono "bloccati" (Stalled). Un warp è bloccato se, ad esempio, sta aspettando un dato dalla memoria globale. Se il warp $A$ sta aspettando la memoria, lo scheduler passa al warp $B$ che invece ha i dati pronti per fare calcoli.
+
+- una volta scelto il Warp, i suoi 32 thread eseguono la *stessa istruzione* contemporaneamente sulle unità funzionali (core).
 
 
+I warp possono sincronizzarsi nell'accesso alla memoria attraverso delle primitive. La situazione ideale è che avvenga tutto in modo sincrono. 
 
-
-
-
-Lo scheduler va a schedulare i warp per l'esecuzione fisica. 
-
-Passaggi: 
-- i blocchi vengono schedulati sull SM
-- i warp di cui è costituito un blocco vengono schedulati e succissivamente eseguiti (servono 32 core all'interno di un SM per eseguire un warp), la perfezione è che avviene tutti in modo sincrono. Anche le memorie sono improntante a dimensione 32. Questa è la situazione che da il massimo througtput generale. 
-
-Ci sono ragioni in cui un WARP può essere in wating in quanto tutte le sue 32 linee non sono pronte. 
-
-//riguardare
-Limitazione dello scheduling:
-- Meno warp presenti nella lista dei pronti
-- più latenza nell'accedere ai dati
-- se saturo il numero di risorse per un thread singolo (tante varibili saturo i registri) lo sheduling genrale soffre. 
-
-=== scheduling dei blocchi
-
-la griglia è una collezione di blocchi (non c'è distinzione, noi la facciamo a livello logico), ogni blocco viene associato ad un SM. 
-
-Gli SM consumano memoria condivisa. Il numero di blocchi può essere arbitrario (anche se limitato nel numero di thread), inoltre ogni blocco è indipendente nello scheduling. Ogni blocco lavora in locale in base alle risorse dell'SM. 
-
-C'è un meccanismo di cooperazione tra blocchi si estende la sincronizzazione tra blocchi. 
-
-=== Scheduling dei warp
-
-ci possono essere più warp attivi all'interno del device. i warp vengono schedulati e eseguiti per istruzione per istruzione. 
-
-i warp possono sincronizzarsi all'accesso in memoria attraverso delle primitive. 
-
-Obbiettivo :
-- ridurre la latenza avendo il numero massimo di warp attivi contemporaneamente.
+L' obbiettivo dello scheduler è *ridurre la latenza*, avendo il numero massimo di warp attivi contemporaneamente:
 $
   "Active warp" / "max possible warp per SM"
 $
 
-I branch rendono inefficiente il sistema. Un brench avviene nel codice, un thread ID segue una strda e un altro thread ID un'altra. é possibile riorganizzare i dati a livello di warp e non di thread. 
+#nota()[
+  Se saturo il numero di risorse per un thread singolo (tante varibili che saturano i registri), lo sheduling genrale soffre.
+
+  Un'alta occupazione non garantisce per forza delle buone performance.
+]
+
+Anche le memorie sono improntante a dimensione $32$.
+
+== Branch control
+
+I *branch* rendono inefficiente il sistema. Quando un branch viene eseguito esso causa una "divisione" del flusso di esecuzione, un thread ID segue una strda e un altro thread ID un'altra. é possibile riorganizzare i dati a livello di warp e non di thread. 
 
 #attenzione()[
   Non è detto che c'è un assocazione 1:1 thread e dati, ovvero il primo dato corrisponde al thread con ID 1. Ma posso lavorare modulo la dimensione di warp 
