@@ -471,8 +471,12 @@ Prorietà di un kernel. Sono dei qualificatori:
   - Può essere solamente lanciata dal kernel
   - Restituisce un tipo void 
 - $mb("__device__")$: 
-  - Eseguita dal device
-  - Può essere chiamata solo dal device
+  - Eseguita dal device. Sono funzioni d'appoggio utilizzate internamente dal kernel. Vengono eseguite esclusivamente sulla CPU. 
+  - Può essere chiamata solo dal device. Impostando la modalità *``` inline=True```*, il compilatore inserisce il codice della funzione device all'interno della funzione kernel, risparmiando così i costi relativi alla chiamata. 
+  #attenzione()[
+   Le funzioni ``` device``` *non* sono un kernel, possono avere un valore di ritorno.
+  ]
+ 
 - $mb("__host__")$: 
   - Può essere omesso
   - Computata e chiamata solo dalla CPU
@@ -497,7 +501,14 @@ Prorietà di un kernel. Sono dei qualificatori:
   my_kernel[blockspergrid, threadsperblock](a, b, out)
   cuda.synchronize()
   ```
-  il numero totale di thread è dato da $"blockspergrid" * "threadsperblock"$. 
+  il numero totale di thread è dato da: 
+  $
+    "blockspergrid" * "threadsperblock"
+  $
+
+#nota()[
+  In generale, una volta fissato il numero di thread per blocco, non è corretto calcolare il numero di blocchi necessari con la divisione intera è meglio utilizzare una divisone e approsimare con ``` ceil```. 
+]
 
   #attenzione()[
     L'esecuzione del kernel avviene in modo asincrono. Lato host bisogna usare ``` cuda.synchronize()``` per aspettare i risultati dai thread. 
