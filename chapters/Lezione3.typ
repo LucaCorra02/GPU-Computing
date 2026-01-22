@@ -592,6 +592,7 @@ L'$mg("obiettivo")$ è far sì che *tutti i thread dello stesso warp prendano la
 
 - *Mapping dei thread*: Se non è possibile spostare i dati, possiamo cambiare il modo in cui i thread scelgono su quale dato lavorare. L'idea è raggruppare thread che hanno un alta probabilità di seguire lo stesso percorso logico.
 
+//TODO
 === Sincronizzazione
 
 Nel modello *SIMT*, ogni thread può fare strade diverse. Ciascun threa può seguire un flusso "indipendente", richiedendo tempi diversi rendendo neccessaria . Richiede sincronizzazione, quando si riparte con la prossima istruzione dobbiamo essere sicuri che i thread siano tutti allo stesso punto. 
