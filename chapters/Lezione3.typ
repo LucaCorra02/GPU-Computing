@@ -4,7 +4,7 @@
 == Gerarchia della memoria
 
 Panoramica logica: 
-- ogni thread viene eseguito su un CUDA core ed ha uno spazio privato di memoria per registri, chiamate di funzioni. 
+- ogni thread viene eseguito su un CUDA core ed ha uno spazio privato di memoria per registri, chiamate di funzioni, ecc. 
 
 - a loro volta i thread sono collezionati   (a livello logico) in blocchi. Essi vengono eseguiti *concorrentemente* e possono cooperare attraverso barriere di sincronizzazione. Un blocco di thread usa una *shared memory* per la comunicazione intra-thread. 
 
@@ -438,7 +438,7 @@ $
   Un'alta occupazione non garantisce per forza delle buone performance.
 ]
 
-Anche le memorie sono improntante a dimensione $32$.
+Anche le memorie sono improntante a dimensione $32$ sempre per ridurre la latenza.
 
 == Branch control
 
