@@ -408,6 +408,11 @@ Appena un blocco viene caricato sull'SM, viene logicamente suddiviso in Warps.
   La cooperazione inoltre avviene solamente all'interno del blocco (tranne casi particolari).
 ]
 
+Possiamo anche associare più blocchi ad un *cluster*. I blocchi nello stesso cluster in questo modo possono *cooperare* tra di loro. Il costo è che viene aggiunto overhead di gestione (sincronizzazione) ma permette di gestire strutture dati più grandi. 
+
+A livello hardware gli SM vengono ragruppati in GPC, per permettere questa cooperazione. 
+
+
 === Warp scheduling
 
 All'interno di ogni SM ci sono dei *Warp Scheduler*. Il loro compito è decidere quale warp deve eseguire un'istruzione in un certo istante (ciclo di clock).
@@ -592,35 +597,172 @@ L'$mg("obiettivo")$ è far sì che *tutti i thread dello stesso warp prendano la
 
 - *Mapping dei thread*: Se non è possibile spostare i dati, possiamo cambiare il modo in cui i thread scelgono su quale dato lavorare. L'idea è raggruppare thread che hanno un alta probabilità di seguire lo stesso percorso logico.
 
-//TODO
 === Sincronizzazione
 
-Nel modello *SIMT*, ogni thread può fare strade diverse. Ciascun threa può seguire un flusso "indipendente", richiedendo tempi diversi rendendo neccessaria . Richiede sincronizzazione, quando si riparte con la prossima istruzione dobbiamo essere sicuri che i thread siano tutti allo stesso punto. 
+Nel modello *SIMT*, ogni thread può seguire strade diverse. Ognuno di essi può impiegarci tempi diversi, rendendo neccessaria la sincronizzazione. Quando si riparte con la prossima istruzione dobbiamo essere sicuri che i thread siano tutti allo stesso punto. 
 
-//aggiungere immagine
+In CUDA la sincronizzazione può essere fatta su più livelli: 
+- livello di *device* ```c cudaDeviceSynchronize()```. Blocca l'esecuzione dell'applicazione host finchè tutte le operazioni CUDA (kernel, copie, ecc) non sono state completate.
+
+- livello di *blocchi* ```c __synchtreads()```. Sincronizza i thread all'interno di un blocco, attende fino a quando non raggiungono tutti lo stesso punto. 
+
+- livello di *warp* ```c __syncwarp()```. Sincronizza i thread all'interno di warp. 
+
 #nota()[
-  Sincronizzazione livello di blocco principalmente (anche se esite per il warp )
+  Utilizzeremo principalmente la sincronizzazione a livello di blocco.
 ]
 
+#attenzione()[
+  Inserire una direttiva di sincronizzazione ``` __synchtreads()``` all'interno di un branch ``` if-else``` può causare *deadlock* se i thread del blocco vengono divisi in due gruppi. 
+  ```py
+    if threadIdx.x < 512:
+      fai_cose_A()
+      cuda.syncthreads()  # <--- BARRIERA
+    else:
+      fai_cose_B()
+  ```
+  Il gruppo $A$ aspetta il gruppo $B$, tuttavia il gruppo $B$ non arriverà mai alla barriera. 
+]
 
-in C esistono una serie di primitive: 
-- ``` syncthreads``` = a un certo punto del codice kernel compare questa istruzione (interpretata da runtime CUDA). intriduce una barriera per i thread del blocco 
-- ``` syncwarp``` = introduce sincronizzazione a livello di warp. 
+Siccome nelle recenti architetture ogni thread possiede un proprio PC (program counter), la *GPU* è in grado di *saltare tra i rami ``` if e else``` dello stesso warp* in modo flessibile. La direttiva ```c __syncwarp()``` è lo strumento per gestire i punti di ritorno. 
 
-//aggiungere immagine
-Ogni thread ha un proprio progam counter PC (ognuno ha un registro). Di conseguenza i thread possono essere gestiti con divergenza e ri-convergere anche a livello di warp.  (poco interessante per il prof?)
+#esempio()[
 
+  Sulle vecchie GPU, senza ```c __syncwarp()``` o scheduling indipendente (unico PC per tutto il warp), l'hardware avrebbe probabilmente eseguito tutto il blocco ``` if``` ($A$ e $B$) prima di toccare il blocco ``` else``` ($X$ e $Y$).
 
-=== Cluster
-
-Possiamo associare più bloccho ad un cluster. I blocchi nello stesso cluster possono cooperare tra di loro. Aggungiamo un overhead di gestione per permette di gestire strutture dati più grandi. 
-
-Nella situazione ci sono dei gruppi fisici di SM (GPC) che permettono questa cooperazione
+  Con ```c __syncwarp()```, il programmatore può forzare o permettere un'esecuzione intrecciata ($A -> X -> B -> Y$). Questo è fondamentale per *evitare Deadlock* in algoritmi complessi dove i thread dello stesso warp devono comunicare tra loro (_ad esempio: i thread del ramo if producono un dato che i thread del ramo else devono leggere subito, prima che il ramo if termini_).
 
 
+ #figure(
+  grid(
+    columns: (0.7fr, 1.3fr),
+    column-gutter: 1em,
+    [
+      // Left side - Code
+      #set text(size: 9pt)
+      ```c
+      if (threadIdx.x < 4) {
+        A;
+        __syncwarp();
+        B;
+      } else {
+        X;
+        __syncwarp();
+        Y;
+      }
+      __syncwarp();
+      ```
+    ],
+    [
+      // Right side - Execution timeline
+      #import cetz.draw: *
+      #cetz.canvas({
+        let block_w = 1.0
+        let block_h = 1.5
+        let gap_x = 0.5
+        let gap_y = 0.3
+        
+        // Title
+        content((3.5, 3.8), text(fill: rgb(120, 180, 0), size: 9pt, weight: "bold")[
+          La sincronizzazione può portare ad uno scheduling intervallato
+        ])
+        
+        // Diverge bar (initial)
+        let x_start = 0.2
+        rect((x_start, 0.3), (x_start + 0.2, 0.3 + 2.5),
+             fill: gray.darken(30%),
+             stroke: none)
+        content((x_start - 0.5, 1.5), 
+                text(fill: black, size: 9pt)[diverge])
+        
+        // First row (top): X and Y
+        let y_top = 1.8
+        
+        // Block X
+        let x_x = x_start + 0.4 + 0.3
+        rect((x_x+2, y_top), (x_x + block_w, y_top + block_h),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        
+        for i in range(8) {
+          let tx = x_x + 1.15 + i * 0.1
+          bezier((tx, y_top + 1.2), (tx + 0.05, y_top + 0.2), (tx + 0.025, y_top + 0.9), (tx + 0.025, y_top + 0.5),
+                 stroke: (paint: rgb(60, 100, 40), thickness: 1pt))
+        }
+        
+        content((x_x+1 + block_w/2, y_top + 0.7), text(fill: black, size: 8pt, weight: "bold")[X])
+        content((x_x + block_w/2, y_top + 1.45), text(fill: rgb(120, 180, 0), size: 7pt, weight: "bold")[])
+        
+        // Block Y
+        let x_y = x_x + block_w+0.5 + gap_x + 1.0
+        rect((x_y, y_top), (x_y + block_w, y_top + block_h),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        
+        for i in range(8) {
+          let tx = x_y + 0.15 + i * 0.1
+          bezier((tx, y_top + 1.2), (tx + 0.05, y_top + 0.2), (tx + 0.025, y_top + 0.9), (tx + 0.025, y_top + 0.5),
+                 stroke: (paint: rgb(60, 100, 40), thickness: 1pt))
+        }
+        
+        content((x_y + block_w/2, y_top + 0.7), text(fill: black, size: 8pt, weight: "bold")[Y])
+        content((x_y + block_w/2, y_top + 1.45), text(fill: rgb(120, 180, 0), size: 7pt, weight: "bold")[Y;])
+        
+        // Second row (bottom): A and B (checkerboard pattern)
+        let y_bottom = 0.3
+        
+        // Block A (aligned under X)
+        let x_a = x_x
+        rect((x_a, y_bottom), (x_a + block_w, y_bottom + block_h),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        
+        for i in range(8) {
+          let tx = x_a + 0.15 + i * 0.1
+          bezier((tx, y_bottom + 1.2), (tx + 0.05, y_bottom + 0.2), (tx + 0.025, y_bottom + 0.9), (tx + 0.025, y_bottom + 0.5),
+                 stroke: (paint: rgb(60, 100, 40), thickness: 1pt))
+        }
+        
+        content((x_a + block_w/2, y_bottom + 0.7), text(fill: black, size: 8pt, weight: "bold")[A])
+        
+        // Block B (offset between A and Y)
+        let x_b = x_a + block_w+0.5 + gap_x
+        rect((x_b, y_bottom), (x_b + block_w, y_bottom + block_h),
+             fill: rgb(150, 200, 100),
+             stroke: black)
+        
+        for i in range(8) {
+          let tx = x_b + 0.15 + i * 0.1
+          bezier((tx, y_bottom + 1.2), (tx + 0.05, y_bottom + 0.2), (tx + 0.025, y_bottom + 0.9), (tx + 0.025, y_bottom + 0.5),
+                 stroke: (paint: rgb(60, 100, 40), thickness: 1pt))
+        }
+        
+        content((x_b + block_w/2, y_bottom + 0.7), text(fill: black, size: 8pt, weight: "bold")[B])
+        
+        // Synchronize bar (final)
+        let x_sync = x_y + block_w + 0.2
+        rect((x_sync, 0.3), (x_sync + 0.2, 0.3 + 2.5),
+             fill: gray.darken(30%),
+             stroke: none)
+        content((x_sync + 1.0, 1.5), 
+                text(fill: black, size: 9pt)[synchronize])
+        
+        // Time arrow
+        line((0.1, 0), (x_sync + 0.5, 0), 
+             mark: (end: "stealth"), 
+             stroke: (paint: black, thickness: 1.5pt))
+        content((x_sync + 0.8, 0), text(fill: black, size: 9pt, weight: "bold")[Time])
+      })
+    ]
+  ),
+  caption: [
+    Scheduling interlacciato con `__syncwarp()`.\
+    La barra `diverge` segna l'inizio della divisione, la barra `synchronize` la riconvergenza finale.\
+    L'ordine temporale di esecuzione è: $A$ → $X$ → $B$ → $Y$.
+  ]
+) <syncwarp-checkerboard>
 
-
-
+]
 
 
 
