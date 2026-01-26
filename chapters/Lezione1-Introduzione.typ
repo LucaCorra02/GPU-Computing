@@ -2,7 +2,7 @@
 
 = Introduzione
 
-== Perchè HPC?
+== Perchè HPC? // TODO: sistemare introduzione
 L'obbiettivo è svolgere più operazioni possibili nell'unita di tempo.
 - EXA = numero di operazioni floating point nell'unità di tempo
 CPU = host, GPU = device, ad oggi sono collegate assime per abbatere il tempo della trasmissione (collo di bottiglia negli HPC).
