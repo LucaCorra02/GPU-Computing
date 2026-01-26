@@ -31,7 +31,7 @@
 // ============================================================================
 // YOUR CONTENT STARTS HERE
 // ============================================================================
-// 
+//
 #include "chapters/Lezione1-Introduzione.typ"
 #include "chapters/Lezione2-Gerarchia-Thread.typ"
 #include "chapters/Lezione3-Warp.typ"
