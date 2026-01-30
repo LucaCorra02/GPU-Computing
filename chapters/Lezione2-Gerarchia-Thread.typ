@@ -4,50 +4,49 @@
 
 == Architettura GPU
 
-Una GPU è composta da molti streaming multiprocessors (*SMs*). Ognuno di essi contiene molte unità funzionali (un certo blocco di core). Essi dispongono di una memoria privata, cache e register file. \
-A loro volta gli SMs, sono raggruppati in cluster, chiamati Graphics processing clusters (*GPCs*). Essi lavorano condividendo un'unica memoria (L2 cache). La GPU non è altro che un insieme di GPCs.
+Una GPU è composta da molti streaming multiprocessors (*SMs*). Ognuno di essi contiene molte unità funzionali (un certo numero di core). Essi dispongono di una memoria privata, cache e register file.
 
-La CPU (host) è connessa alla GPU tramite degli appositi canali.
+A loro volta gli SMs, sono raggruppati in cluster, chiamati Graphics Processing Clusters (*GPCs*). Essi lavorano condividendo un'unica memoria (L2 cache). La GPU non è altro che un insieme di GPCs.
 
 == Thread in CUDA
 
 Pensare in parallelo, significa avere chiaro quali *feature* la *GPU* espone al programmatore:
-- è essenziale conoscere l'architettura della GPU per scalare su migliaia di thread come fosse uno.
-- gestire la cache, in modo da sfruttare il *principio di località*.
-- conoscere lo *scheduling* dei blocchi di thread. Se il blocco di thread è molto esoso in termini di risorse, potrebbe essere eseguito in modo singolare sulla GPU durante un certo istante di tempo.
+- è essenziale conoscere l'architettura della GPU per scalare il carico di lavoro su migliaia di thread.
+- gestire in maniera opportuna la cache, in modo da sfruttare il *principio di località*.
+- conoscere lo *scheduling* dei blocchi di thread. Se il blocco di thread è molto esoso in termini di risorse, potrebbe essere eseguito in modo singolare sulla GPU durante un certo istante di tempo. // TODO ??
 - gestire le *sincronizzazioni*. I thread a volte potrebbero dover cooperare nella GPU. Bisogna effettuare una sincronizzazione all'interno dei blocchi logici di thread.
 
 CUDA permette al programmatore di gestire i thread e la memoria dati.
 #attenzione[
-  Le operazioni di lancio del kernel sono sempre asincrone. Mentre le operazioni in memoria, per definizione, sono sincrone. Questo permette di garantire l'integrità dei dati.
+  Le operazioni di lancio del kernel sono sempre asincrone. Mentre le operazioni in memoria sono solitamente sincrone. Questo per garantire l'integrità dei dati.
 ]
-
-Infine il compilatore (_nvcc_) deve generare codice eseguibile per host(linguaggio _C_ o altro) e device (_Cuda C_), l'output di questa fase prende il nome di *fat binary*.
 
 == Processing Flow
 
-In generale, lo schema da seguire è sempre lo stesso:
+In generale, lo schema da seguire è questo:
 - copiare i dati da elaborare dalla CPU alla GPU
-- caricare ed eseguire il programma in GPU. Caricare i dati nella cache della GPU, in modo da migliorare le performance.
-- copiare i dati dalla memoria della GPU alla memoria della CPU.
+- caricare ed eseguire il programma in GPU. Fare attenzione all'utilizzo della cache/shared memory della GPU, in modo da migliorare le performance.
+- copiare i risultati dalla memoria della GPU alla memoria della CPU.
 
 == Gerarchia dei thread
 
 CUDA presenta una *gerarchia astratta* di thread, strutturata su due livelli:
-- *grid*: una griglia ordinata di blocchi
 - *block*: una collezione ordinata di thread.
+- *grid*: una griglia ordinata di blocchi
 
 La struttura a _blocchi_ permette alla GPU di distribuire il lavoro. I blocchi vengono assegnati ai vari SM disponibili. Una GPU potente con molti SM eseguirà più blocchi contemporaneamente. Questo permette di scrivere il codice una volta sola e farlo "scalare" su hardware diverso.
 
-#informalmente()[
-  Sebbene la memoria fisica della GPU sia sempre lineare (una lunga sequenza di byte 1D), per i programmatori è difficile ragionare solo in termini lineari se il problema da risolvere è geometrico. Per questo motivo si usa una organizzazione logica astratta.
+Sia le griglie che i blocchi possono avere una *dimensione* ($1D$, $2D$ o $3D$).
+
+#nota()[
+  Sebbene la memoria fisica della GPU sia sempre lineare (una lunga sequenza monodimensionale di byte), per i programmatori è difficile ragionare solo in termini lineari se il problema da risolvere è di carattere geometrico. Per questo motivo si usa una organizzazione logica astratta su più dimensioni.
 ]
 
-Sia le griglie che i blocchi possono avere una *dimensione* ($1D$, $2D$ o $3D$).
+La scelta del numero di dimensioni avviene in base ai dati che si vuole elaborare.
+
 #nota[
   In generale si usa la stessa dimensione sia per le griglie che i blocchi
 ]
-La scelta del numero di dimensioni avviene in base ai dati che si vuole elaborare.
 
 Le dimensioni vengono gestite nel seguente modo:
 - *$"grid"(mb(x),mr(y),mg(z))$*:
@@ -68,19 +67,19 @@ Per ottenere il numero totale di thread basta moltiplicare tutte le dimensioni d
 
 === Mapping
 
-Un *blocco* è quindi un gruppo di thread che possono cooperare tra loro (anche thread in blocchi diversi) mediante due tecniche:
+Un *blocco* è quindi un gruppo di thread che possono cooperare tra loro (anche thread in blocchi diversi) mediante due tecniche: // TODO: "(anche thread in blocchi diversi)" da controllare/approfondire
 - *Block-local synchronization*
 - *Block-local shared memory*
 
 #nota()[
-  Tutti i thread in una griglia condividono lo stesso spazio di memoria
+  Tutti i thread in una griglia condividono lo stesso spazio di memoria // TODO ??
 ]
 
 Ogni *thread è identificato univocamente* da due coordinate (sono delle vartiabili built-in):
 - *$"blockIdx"(x,y,z)$* indice del blocco all'interno della grid. Tipo ``` uint3```
 - *$"threadIdx"(x,y,z)$* indice di thread nel blocco. Tipo ``` uint3```
 
-Tali variabili vengono pre-inizializzate e possono essere accedute all'interno del kernel. Quando un kernel viene eseguito ``` blockIdx``` e ``` threadIdx``` vengono assegnate a ogni thread da CUDA *runtime*.
+Tali variabili vengono pre-inizializzate e possono essere accedute all'interno del kernel. Quando un kernel viene eseguito ``` blockIdx``` e ``` threadIdx``` vengono assegnate a ogni thread da CUDA *runtime*. // TODO: da cuda A runtime (?)
 
 === Dati lineari (1D)
 
@@ -172,18 +171,17 @@ Adatto per mappare matrici/immagini. Servono 2 coordinate $(x,y)$. In questo cas
     "ix" = "blockIdx".x * "blockDim".x + "threadIdx".x\
     "iy" = "blockIdx".y * "blockDim".y + "threadIdx".y
   $
-- *Linearizzazione* (da 2D a 1D): Le matrici per convenzione vengono memorizzate riga per colonna (*row-major oder*), per arrivare a una determinata riga, dobbiamo "saltare" tutte le righe complete precedenti. Una volta trovate le coordinate $("ix","iy")$ dobbiamo linearizzarle.
+- *Linearizzazione* (da 2D a 1D): Le matrici per convenzione vengono memorizzate per righe contigue (*row-major oder*), per arrivare a una determinata riga, dobbiamo "saltare" tutte le righe complete precedenti. Una volta trovate le coordinate $("ix","iy")$ dobbiamo linearizzarle.
 $
   "idx" = underbrace(mr("iy" * "larghezza-matrice"), "salta le righe precedenti") + underbrace(mb("ix"), "indice riga corrente")
 $
-Spesso è necessario un controllo quando la dim di griglia non collima con quella della matrice
+Spesso è necessario un controllo quando la dim di griglia non collima con quella della matrice // TODO: collima/coincide ?
 ```
-  if (ix < "blockDim".x & ix < "blockDim".y) // va bene
+  if (ix < "blockDim".x AND ix < "blockDim".y) // va bene
 ```
-
 
 #attenzione()[
-  Il controllo è *obbligatorio*. Siccome il kernel accetta due dimensioni (numero di blocchi per griglia, numero di thread per blocco) può essere che la divisione logica non sia intera (approssimazione ``` ceil```). Il controllo evita accessi ``` out_of_bound``` sulla struttura originale.
+  Il controllo è *obbligatorio*. Siccome il kernel accetta due dimensioni (numero di blocchi per griglia, numero di thread per blocco) può essere che la divisione logica non sia intera (approssimazione per eccesso con `ceil()`). Il controllo evita accessi _out of bound_ sulla struttura originale.
 ]
 
 #figure(
@@ -192,7 +190,7 @@ Spesso è necessario un controllo quando la dim di griglia non collima con quell
 
     cetz.canvas({
       // Formula at top
-      content((3, 4.8), text(fill: black, size: 9pt)[ix = threadIdx.x + blockIdx.x × blockDim.x])
+      content((3, 4.8), text(fill: black, size: 9pt)[$"ix" = "threadIdx.x" + "blockIdx.x" dot "blockDim.x"$])
 
       // Draw grid of blocks
       let block_size = 1.3
@@ -263,7 +261,7 @@ Spesso è necessario un controllo quando la dim di griglia non collima con quell
       // Label iy formula on left side
       content(
         (-0.3, start_y + 1.5 * (block_size + gap)),
-        text(fill: black, size: 8pt)[iy = threadIdx.y + blockIdx.y × blockDim.y],
+        text(fill: black, size: 8pt)[$"iy" = "threadIdx.y" + "blockIdx.y" dot "blockDim.y"$],
         angle: 90deg,
       )
     })
@@ -463,22 +461,23 @@ $
 
 Un kernel in CUDA ha la seguente sintassi:
 ```
-  kernel_name[grid,block](argument)
+  kernel_name[grid, block](arguments)
 ```
 Dove:
-- *grid* = numero di blocchi che racchiudono i thread
+- *grid* = numero di blocchi
 - *block* = numero di thread nel blocco
 
 Prorietà di un kernel. Sono dei qualificatori:
 - $mb("__global__")$:
   - Funzione eseguita dal device
-  - Può essere solamente lanciata dal kernel
-  - Restituisce un tipo void
+  - Return type sempre void
 - $mb("__device__")$:
-  - Eseguita dal device. Sono funzioni d'appoggio utilizzate internamente dal kernel. Vengono eseguite esclusivamente sulla CPU.
-  - Può essere chiamata solo dal device. Impostando la modalità *``` inline=True```*, il compilatore inserisce il codice della funzione device all'interno della funzione kernel, risparmiando così i costi relativi alla chiamata.
+  - Eseguita dal device. Sono funzioni d'appoggio utilizzate internamente da un kernel. Vengono eseguite esclusivamente sulla GPU.
+  - Può essere chiamata solo dal device. Impostando la modalità *`inline=True`*, il compilatore inserisce il codice della funzione device all'interno della funzione kernel, risparmiando così i costi relativi alla chiamata.
+  - Può avere un valore di ritorno
+
   #attenzione()[
-    Le funzioni ``` device``` *non* sono un kernel, possono avere un valore di ritorno.
+    Le funzioni ``` device``` *non* sono un kernel
   ]
 
 - $mb("__host__")$:
@@ -530,24 +529,25 @@ Numba fornisce anche due funzioni per calcolare la *posizione assoluta* di un *t
 
 === Trasferimento dati in numba
 
-La GPU e la CPU hanno due memorie separate. I trasferimenti di dati devono sempre seguire l'ordine $"CPU" -> "GPU" -> "CPU"$.
+La GPU e la CPU hanno due memorie separate.
 
 #nota()[
   Il trasferimento di dati può essere in molti casi il bottleneck
 ]
 
-Numba trasferisce automaticamente gli array Numpy alla GPU, tuttavia lo fa in una maniera *conservativa*. Quando il kernel ha finito, i dati vengono copiati nell'host. \
-Questo comportamento a volte può essere un $mr("problema")$:
-- Trasferimenti non necessari -> sprecano banda
+Numba trasferisce implicitamente gli array Numpy alla GPU, tuttavia lo fa in una maniera *conservativa*. Quando il kernel ha finito, i dati vengono copiati nell'host.
 
-Tuttavia Numba, mette a disposizione delle API in grado di :
+Questo comportamento a volte può essere un $mr("problema")$ perché trasferimenti non necessari possono sprecare banda.
+
+Per questo Numba ci permette di eseguire anche manualmente queste operazioni:
 - Allocare la memoria sulla GPU
-- Copiare i dati solamente quando serve
-- Mantenere dati sul device tra kernel
+- Trasferire dati tra CPU e GPU
+- Mantenere dati sul device tra esecuzioni di diversi kernel
 
 === Device Arrays
 
-Permettono di allocare un array vuoto direttamente sull GPU
+Permettono di allocare un array vuoto direttamente sulla GPU
+
 ```py
 numba.cuda.device_array(
   shape,
@@ -557,7 +557,9 @@ numba.cuda.device_array(
   stream=0
 )
 ```
-il vantaggio è che la memoria viene allocata solo lato device, inoltre non vengono ricopiati automaticamente sul host.
+
+il vantaggio è che la memoria viene allocata solo lato device, inoltre non vengono ricopiati automaticamente sull'host.
+
 #nota()[
   Stesso comportamento di ``` numpy.empty()``` lato host
 ]
@@ -567,6 +569,7 @@ il vantaggio è che la memoria viene allocata solo lato device, inoltre non veng
   # d_out vive esclusivamente sulla GPU
   d_out = cuda.device_array((n,),dtype=np.float32)
 ```
+
 *Quando usarli*:
 - Buffer di output
 - Risultati intermedi
@@ -574,7 +577,8 @@ il vantaggio è che la memoria viene allocata solo lato device, inoltre non veng
 
 === Funzioni di trasferimento
 
-la funzione ```py cuda.device_array_like(h_a)``` permette di *creare un device array* utilizando la dimensione di un'altro array già esistente. Solitamente si usa il seguente pattern:
+La funzione ```py cuda.device_array_like(h_a)``` permette di *creare un device array* utilizando la dimensione di un altro array già esistente. Solitamente si usa il seguente pattern:
+
 ```py
 # Host array
 h_a = np.random.rand(1024).astype(np.float32)
@@ -583,8 +587,8 @@ d_b = cuda.device_array_like(h_a)
 ```
 
 Per il trasferimento da *Host $->$ Device*, viene utilizzata la funzione ```py numba.cuda.to_device(obj,stream=0, copy=True, to=None)```:
-- ``` to=existing_device_array```, usa memoria già allocata
-- ``` stream``` = abilità il trasferimento asincrono
+- `to=existing_device_array`: usa memoria già allocata
+- `stream=n`: esplicitare lo stream utilizzato (verrà visto più tardi nel corso)
 
 Per il trasferimento *Device $->$ Host*, viene utilizzata la funzione ```py copy_to_host()```.
 
@@ -599,8 +603,8 @@ $
 $
 
 #nota()[
-  - Il bound degli indici nel kernel è *obbligatorio*. A casua della funzione di ``` ceil```, potremmo eseguire più blocchi del necessario.
-  - Per quanto riguarda la divisione in blocchi, le GPU moderne eseguono i thread in gruppi indivisibili chiamati *Wrap*. Le GPU moderne preferiscono blocchi con più wrap per blocco. Solitamente si opra per blocchi da $16*16 = 256$ thread, oppure $32*8 = 256$ thread (sfrutta la coalescing della memoria).
+  - Il bound degli indici nel kernel è *obbligatorio*. A casua della funzione `ceil` potremmo eseguire più blocchi del necessario.
+  - Per quanto riguarda la divisione in blocchi, le GPU moderne eseguono i thread in gruppi indivisibili chiamati *Warp*. Le GPU moderne preferiscono blocchi con più warp per blocco. Solitamente si opera per blocchi da $16 dot 16 = 256$ thread, oppure $32 dot 8 = 256$ thread (sfrutta la coalescenza della memoria).
 ]
 
 ```py
