@@ -1,24 +1,145 @@
 #import "../template.typ": *
 
-= Lezione 4
+== Parallel reduction
 
-= Parallel Reduction
+La *reduction* è un'operazione che va a sommare gli elementi di un array di grandi diemensioni.
+$
+  (x_1, dots, x_n) -> s = sum_(i=1)^(n) x_i
+$
+#nota()[
+  La somma può essere sostituita da altre operazioni associative come il prodotto, il massimo, il minimo ecc.
+]
 
-Operazioni commutative che portano un insieme di elementi (memorizzato ad un array) a un unico elemento
+== Somma di array parallela
 
-== Somma Array 
+Sequenzialmente il problema ha una complessità pari a $O(n)$, dove $n$ è la dimensione dell'array. 
 
-Sequenzialmente ha costo $O(n)$ dove $n$ è la dimensione dell'array. 
+Un approccio parallelo potrebbe sfruttare le seguenti idee:
+- Ad ogni passo, metà degli elementi vengono sommati in parallelo.
+- Il numero di thread attivi vengono dimezzati ad ogni passo.
+- Occorre sincronizzare il lavoro dei thread ad ogni passo.
 
-Per il parallelo (supponendo di farlo in place) le stategie possono essere due: 
-- Sommare a coppie. Processo dicotomico (meta della meta ecc)
-- fa la stessa cosa ma combina a coppie in maniera diversa. 
+=== Versione con divergenza
 
-Gli schemi in immagine sono uguali sul piano del risultato. Ma a livello  
+In una prima versione potremmo dividere i thread in due _gruppi_, attraverso il loro ID. In particolare, i thread con ID pari eseguono la somma del loro elemento con quello del thread successivo (ID dispari). 
 
-Stategia parallela ricorsiva: Strategia ricorsiva parallela, la profondità è logaritmica. Ogni step ha un costo che è il numero di elementi che elaboriamo in quello step. 
+Ad ogni passo lavora sola la metà dei thread, rispetto al numero di elementi ancora da sommare. 
 
-//aggiungere immagine e capire codice
+```Python
+@cuda.jit
+def blockParReduce(array, out): # out ha dim = num_blocchi
+  tid = cuda.threadIdx.x
+  idx = cuda.grid(1) # indice globale
+  n = len(array)
+  if idx >= n: return
+
+  # offset per il blocco
+  block_skip = cuda.blockIdx.x * cuda.blockDim.x
+
+  stride = 1
+  while stride < cuda.blockDim.x:
+      if (tid % (2 * stride)) == 0:
+          array[block_skip + tid] += array[block_skip + tid + stride]
+      cuda.syncthreads()
+      stride *= 2
+
+  # Risultato parziale del blocco
+  if tid == 0:
+      out[cuda.blockIdx.x] = array[block_skip]
+```
+Graficamente il funzionamento è il seguente (supponendo che un blocco abbia si occupi di $8$ elementi dell'array originale):
+
+#figure(
+  {
+    import cetz.draw: *
+    
+    cetz.canvas({
+      let cell_w = 0.5
+      let cell_h = 0.5
+      let row_gap = 1.8
+      
+      // Array iniziale
+      let values0 = (1, 3, 5, 7, 2, 4, 6, 8)
+      for i in range(8) {
+        let x = i * cell_w
+        rect((x, 0), (x + cell_w, cell_h), fill: rgb(240, 240, 240), stroke: black)
+        content((x + cell_w/2, cell_h/2), text(size: 8pt, weight: "bold")[#values0.at(i)])
+      }
+      
+      // Thread ID step 1 (4 thread: 0,1,2,3)
+      for i in range(4) {
+        let x = i * cell_w * 2 + cell_w/2
+        circle((x, -0.6), radius: 0.18, fill: rgb(255, 150, 50), stroke: black)
+        content((x, -0.6), text(size: 7pt, fill: white, weight: "bold")[#i])
+        
+        // Frecce che connettono thread ai due elementi da sommare
+        line((x, -0.4), (x, -0.1), stroke: (paint: rgb(255, 100, 0), thickness: 1pt))
+        line((x, -0.4), (x + cell_w, -0.1), stroke: (paint: rgb(255, 100, 0), thickness: 1pt))
+      }
+      
+      // Array dopo step 1
+      let values1 = (4, 3, 12, 7, 6, 4, 14, 8)
+      let y1 = -row_gap
+      for i in range(8) {
+        let x = i * cell_w
+        let fill_color = if calc.rem(i, 2) == 0 { rgb(220, 200, 250) } else { rgb(240, 240, 240) }
+        rect((x, y1), (x + cell_w, y1 + cell_h), fill: fill_color, stroke: black)
+        content((x + cell_w/2, y1 + cell_h/2), text(size: 8pt, weight: "bold")[#values1.at(i)])
+      }
+      
+      // Thread ID step 2 (2 thread: 0,1)
+      for i in range(2) {
+        let x = i * cell_w * 4 + cell_w/2
+        circle((x, y1 - 0.6), radius: 0.18, fill: rgb(255, 150, 50), stroke: black)
+        content((x, y1 - 0.6), text(size: 7pt, fill: white, weight: "bold")[#i])
+        
+        // Frecce
+        line((x, y1 - 0.4), (x, y1 - 0.1), stroke: (paint: rgb(255, 100, 0), thickness: 1pt))
+        line((x, y1 - 0.4), (x + cell_w * 2, y1 - 0.1), stroke: (paint: rgb(255, 100, 0), thickness: 1pt))
+      }
+      
+      // Array dopo step 2
+      let values2 = (16, 3, 12, 7, 20, 4, 14, 8)
+      let y2 = -row_gap * 2
+      for i in range(8) {
+        let x = i * cell_w
+        let fill_color = if calc.rem(i, 4) == 0 { rgb(220, 200, 250) } else { rgb(240, 240, 240) }
+        rect((x, y2), (x + cell_w, y2 + cell_h), fill: fill_color, stroke: black)
+        content((x + cell_w/2, y2 + cell_h/2), text(size: 8pt, weight: "bold")[#values2.at(i)])
+      }
+      
+      // Thread ID step 3 (1 thread: 0)
+      let x3 = cell_w/2
+      circle((x3, y2 - 0.6), radius: 0.18, fill: rgb(255, 150, 50), stroke: black)
+      content((x3, y2 - 0.6), text(size: 7pt, fill: white, weight: "bold")[0])
+      
+      // Frecce
+      line((x3, y2 - 0.4), (x3, y2 - 0.1), stroke: (paint: rgb(255, 100, 0), thickness: 1pt))
+      line((x3, y2 - 0.4), (x3 + cell_w * 4, y2 - 0.1), stroke: (paint: rgb(255, 100, 0), thickness: 1pt))
+      
+      // Array finale
+      let values3 = (36, 3, 12, 7, 20, 4, 14, 8)
+      let y3 = -row_gap * 3
+      for i in range(8) {
+        let x = i * cell_w
+        let fill_color = if i == 0 { rgb(220, 200, 250) } else { rgb(240, 240, 240) }
+        rect((x, y3), (x + cell_w, y3 + cell_h), fill: fill_color, stroke: black)
+        content((x + cell_w/2, y3 + cell_h/2), text(size: 8pt, weight: "bold")[#values3.at(i)])
+      }
+    })
+  },
+  caption: [
+    Riduzione parallela con divergenza
+  ]
+)
+
+
+
+
+=== Versione senza divergenza
+
+
+
 i thread id pari prendono il suo elemento e quello del thread successivo ed eseguie la somma. il numero di thread che operano dimezza ad ogni passo. 
 
 Ci focalizziamo sul blocco (porzione dell'array complessivo). Cioè lavoriamo a livello di blocco. L'idea è prendere un oggetto grande dividerlo in blocchi e successivamente riunire i risultati parziali, inoltre sono altamente sincronizzati i thread in un blocco. S
