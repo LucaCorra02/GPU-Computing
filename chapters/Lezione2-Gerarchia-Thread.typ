@@ -13,7 +13,7 @@ A loro volta gli SMs, sono raggruppati in cluster, chiamati Graphics Processing 
 Pensare in parallelo, significa avere chiaro quali *feature* la *GPU* espone al programmatore:
 - è essenziale conoscere l'architettura della GPU per scalare il carico di lavoro su migliaia di thread.
 - gestire in maniera opportuna la cache, in modo da sfruttare il *principio di località*.
-- conoscere lo *scheduling* dei blocchi di thread. Se il blocco di thread è molto esoso in termini di risorse, potrebbe essere eseguito in modo singolare sulla GPU durante un certo istante di tempo. // TODO ??
+- conoscere lo *scheduling* dei blocchi di thread. Se il blocco di thread è molto esoso in termini di risorse, potrebbe essere eseguito in modo singolare sulla GPU durante un certo istante di tempo.
 - gestire le *sincronizzazioni*. I thread a volte potrebbero dover cooperare nella GPU. Bisogna effettuare una sincronizzazione all'interno dei blocchi logici di thread.
 
 CUDA permette al programmatore di gestire i thread e la memoria dati.
@@ -67,19 +67,19 @@ Per ottenere il numero totale di thread basta moltiplicare tutte le dimensioni d
 
 === Mapping
 
-Un *blocco* è quindi un gruppo di thread che possono cooperare tra loro (anche thread in blocchi diversi) mediante due tecniche: // TODO: "(anche thread in blocchi diversi)" da controllare/approfondire
+Un *blocco* è quindi un gruppo di thread che possono cooperare tra loro (anche thread in blocchi diversi) mediante due tecniche:
 - *Block-local synchronization*
 - *Block-local shared memory*
 
 #nota()[
-  Tutti i thread in una griglia condividono lo stesso spazio di memoria // TODO ??
+  Tutti i thread in una griglia condividono lo stesso spazio di memoria
 ]
 
 Ogni *thread è identificato univocamente* da due coordinate (sono delle vartiabili built-in):
 - *$"blockIdx"(x,y,z)$* indice del blocco all'interno della grid. Tipo ``` uint3```
 - *$"threadIdx"(x,y,z)$* indice di thread nel blocco. Tipo ``` uint3```
 
-Tali variabili vengono pre-inizializzate e possono essere accedute all'interno del kernel. Quando un kernel viene eseguito ``` blockIdx``` e ``` threadIdx``` vengono assegnate a ogni thread da CUDA *runtime*. // TODO: da cuda A runtime (?)
+Tali variabili vengono pre-inizializzate e possono essere accedute all'interno del kernel. Quando un kernel viene eseguito ``` blockIdx``` e ``` threadIdx``` vengono assegnate a ogni thread da CUDA a *runtime*.
 
 === Dati lineari (1D)
 
@@ -175,7 +175,7 @@ Adatto per mappare matrici/immagini. Servono 2 coordinate $(x,y)$. In questo cas
 $
   "idx" = underbrace(mr("iy" * "larghezza-matrice"), "salta le righe precedenti") + underbrace(mb("ix"), "indice riga corrente")
 $
-Spesso è necessario un controllo quando la dim di griglia non collima con quella della matrice // TODO: collima/coincide ?
+Spesso è necessario un controllo quando la dim di griglia non eccede con quella della matrice
 ```
   if (ix < "blockDim".x AND ix < "blockDim".y) // va bene
 ```
