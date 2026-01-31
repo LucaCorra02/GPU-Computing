@@ -19,11 +19,15 @@ Un approccio parallelo potrebbe sfruttare le seguenti idee:
 - Il numero di thread attivi vengono dimezzati ad ogni passo.
 - Occorre sincronizzare il lavoro dei thread ad ogni passo.
 
+#attenzione()[
+  L'array di input deve avere una dimensione pari ad una potenza di $2$ (es. $2^k$). In caso contrario, occorre *padding* l'array con zeri fino a raggiungere la dimensione successiva pari ad una potenza di $2$.
+]
+
 === Versione con divergenza
 
 In una prima versione potremmo dividere i thread in due _gruppi_, attraverso il loro ID. In particolare, i thread con ID pari eseguono la somma del loro elemento con quello del thread successivo (ID dispari). 
 
-Ad ogni passo lavora sola la metà dei thread, rispetto al numero di elementi ancora da sommare. 
+Ad ogni passo *lavora sola la metà dei thread* (con ID pari), rispetto al numero di elementi ancora da sommare. 
 
 ```Python
 @cuda.jit
@@ -47,6 +51,13 @@ def blockParReduce(array, out): # out ha dim = num_blocchi
   if tid == 0:
       out[cuda.blockIdx.x] = array[block_skip]
 ```
+
+#nota()[
+  Serve *sincronizzazione* tra uno step e il successivo. Ogni step richiede che i risultati del passo precedente siano stati elaborati.
+
+  Inoltre, è l'host che si occuperà di riunire i risultati parziali di ogni blocco (fuori dal kernel).
+]
+
 Graficamente il funzionamento è il seguente (supponendo che un blocco abbia si occupi di $8$ elementi dell'array originale):
 
 #figure(
@@ -133,52 +144,147 @@ Graficamente il funzionamento è il seguente (supponendo che un blocco abbia si 
   ]
 )
 
-
-
-
 === Versione senza divergenza
 
+Il problema principale della versione precedente è che introduceva una *$mr("warp divergency")$*: 
+- I thread sono raggruppati in warps ($32$ thread), dove ognuno di essi esegue la stessa istruzione.
 
+- Il branch ``` if(tid % (2 * stride)) == 0: ``` causa una divergenza all'interno del warp:
+  - I thread con ID pari eseguono l'operazione di somma.
+  - I thread con ID dispari restano inattivi.
 
-i thread id pari prendono il suo elemento e quello del thread successivo ed eseguie la somma. il numero di thread che operano dimezza ad ogni passo. 
+  Siccome il warp deve muoversi all'unisono, l'hardware è *costretto a serializzare l'esecuzione* del warp, causando un degrado delle prestazioni.
 
-Ci focalizziamo sul blocco (porzione dell'array complessivo). Cioè lavoriamo a livello di blocco. L'idea è prendere un oggetto grande dividerlo in blocchi e successivamente riunire i risultati parziali, inoltre sono altamente sincronizzati i thread in un blocco. S
-#nota()[
-  Serve sincronizzazione tra uno step è l'altro. Servono che tutti i risultati dello step intermedio siano terminati, per questo lavor a livello di blocco. 
+La *$mg("soluzione")$* consiste nel *sequential addressing*, ovvero nel riassegnare gli indici degli elementi dell'array a thread con ID consecutivi, in modo da evitare la divergenza ( i thread inattivi saranno raggruppati alla fine):
+
+#figure(
+  {
+    import cetz.draw: *
+    
+    cetz.canvas({
+      let cell_w = 0.5
+      let cell_h = 0.5
+      let row_gap = 1.3
+      
+      // Etichetta Global memory
+      content((-1.5, 0.25), text(size: 8pt)[Global memory])
+      
+      // Array iniziale in Global memory
+      let values0 = (5, 1, 2, 0, 1, 1, 3, 0)
+      for i in range(8) {
+        let x = i * cell_w
+        rect((x, 0), (x + cell_w, cell_h), fill: white, stroke: black)
+        content((x + cell_w/2, cell_h/2), text(size: 8pt, weight: "bold")[#values0.at(i)])
+      }
+      
+      // Etichetta Thread ID
+      content((-1.5, -0.9), text(size: 8pt)[Thread ID])
+      
+      // Thread ID step 1 (4 thread: 0,1,2,3)
+      for i in range(4) {
+        let x = i * cell_w * 2 + cell_w/2
+        circle((x, -0.9), radius: 0.2, fill: rgb(255, 150, 50), stroke: black)
+        content((x, -0.9), text(size: 7pt, fill: white, weight: "bold")[#i])
+        
+        // Frecce tratteggiate che connettono thread agli elementi
+        let target_x = i * cell_w * 2
+        line((x, -0.65), (target_x + cell_w/2, -0.1), stroke: (paint: gray, thickness: 0.8pt, dash: "dashed"))
+        line((x, -0.65), (target_x + cell_w * 1.5, -0.1), stroke: (paint: gray, thickness: 0.8pt, dash: "dashed"))
+      }
+      
+      // Array dopo step 1 (stride 2)
+      let values1 = (4, none, 7, none, 5, none, 5, none)
+      let y1 = -row_gap - 0.5
+      for i in range(8) {
+        let x = i * cell_w
+        let val = values1.at(i)
+        let fill_color = if val != none and calc.rem(i, 2) == 0 { rgb(220, 200, 250) } else { white }
+        rect((x, y1), (x + cell_w, y1 + cell_h), fill: fill_color, stroke: black)
+        if val != none {
+          content((x + cell_w/2, y1 + cell_h/2), text(size: 8pt, weight: "bold")[#val])
+        }
+      }
+      
+      // Thread ID step 2 (2 thread: 0,2)
+      for i in (0, 2) {
+        let x = i * cell_w * 2 + cell_w/2
+        circle((x, y1 - 0.5), radius: 0.2, fill: rgb(255, 150, 50), stroke: black)
+        content((x, y1 - 0.5), text(size: 7pt, fill: white, weight: "bold")[#(i / 2)])
+        
+        // Frecce tratteggiate
+        line((x, y1 - 0.25), (x, y1 - 0.1), stroke: (paint: gray, thickness: 0.8pt, dash: "dashed"))
+        line((x, y1 - 0.25), (x + cell_w * 2, y1 - 0.1), stroke: (paint: gray, thickness: 0.8pt, dash: "dashed"))
+      }
+      
+      // Array dopo step 2 (stride 4)
+      let values2 = (11, none, none, none, 14, none, none, none)
+      let y2 = y1 - row_gap
+      for i in range(8) {
+        let x = i * cell_w
+        let val = values2.at(i)
+        let fill_color = if val != none { rgb(220, 200, 250) } else { white }
+        rect((x, y2), (x + cell_w, y2 + cell_h), fill: fill_color, stroke: black)
+        if val != none {
+          content((x + cell_w/2, y2 + cell_h/2), text(size: 8pt, weight: "bold")[#val])
+        }
+      }
+      
+      // Thread ID step 3 (1 thread: 0)
+      let x3 = cell_w/2
+      circle((x3, y2 - 0.5), radius: 0.2, fill: rgb(255, 150, 50), stroke: black)
+      content((x3, y2 - 0.5), text(size: 7pt, fill: white, weight: "bold")[0])
+      
+      // Frecce tratteggiate
+      line((x3, y2 - 0.25), (x3, y2 - 0.1), stroke: (paint: gray, thickness: 0.8pt, dash: "dashed"))
+      line((x3, y2 - 0.25), (x3 + cell_w * 4, y2 - 0.1), stroke: (paint: gray, thickness: 0.8pt, dash: "dashed"))
+      
+      // Array finale (stride 8)
+      let values3 = (25, none, none, none, none, none, none, none)
+      let y3 = y2 - row_gap
+      for i in range(8) {
+        let x = i * cell_w
+        let val = values3.at(i)
+        let fill_color = if val != none { rgb(220, 200, 250) } else { white }
+        rect((x, y3), (x + cell_w, y3 + cell_h), fill: fill_color, stroke: black)
+        if val != none {
+          content((x + cell_w/2, y3 + cell_h/2), text(size: 8pt, weight: "bold")[#val])
+        }
+      }
+    })
+  },
+  caption: [
+    Riduzione parallela con *sequential addressing* (senza divergenza).\
+    I thread con ID consecutivi lavorano su indici consecutivi, evitando warp divergence.\
+  ]
+)
+
+#informalmente()[
+  L'idea è che cambiare come vengono associati i thread agli indici della struttura dati. 
 ]
 
-``` syncthread``` è dentro il for. Tutti i thread del blocco arrivano a questa barriera di iterazione, alla prossiam iterazione i dati sono aggiornati. 
+```Python
+@cuda.jit
+def blockParReduce_no_div(in_arr, out_arr, n):
+    tid = cuda.threadIdx.x
+    idx = cuda.grid(1) 
+    # Indirizzo di partenza del blocco nelal struttura originale
+    base = cuda.blockIdx.x * cuda.blockDim.x
+    if (base + tid) >= n: return
 
-#attenzione()[
-  Il codice contiene un branch, quindi abbiamo una divergenza. Non è ottimale
-]
+    stride = 1
+    while stride < cuda.blockDim.x:
+        index = 2 * stride * tid
+        if index < cuda.blockDim.x:
+            if (base + index + stride) >= n: continue
+            in_arr[base + index] += in_arr[base + index + stride]
+        cuda.syncthreads()
+        stride *= 2
 
-il ``` blockid``` sta puntanto ad una porzione dell'array originale. in array out vengono memorizzato tutte le somme di ogni singolo blocco. 
-
-Nella seconda immagine cambiano gli indici dei thread (meno divergenza).
-#esempio()[
-  Dato un array iniziale di dim $8$.
-  l'idea iniziale è fare una mappa 1:1 tuttavia porta delle divergenze
-
-  l'idea è rigiocare gli indici, non è detto che il thread lavori sull'indice corrispondente. 
-
-  il thread id è sempre lo stesso ma capire quali stanno lavorando è importante. Lo stride è diverso da un indicizzazione sequeziale. lo stride rappresenta quale altro valore devo prendere
-
-  in questo caso lo stride aumenta di due ad ogni iterazione: 
-  - prima iterazione sommo pari e dispari threadID a 2 a due
-  - seconda iterazione sommo a con offset 4
-  - ultima oterazione ho tutta la somma dell'array nel thread $0$.
-]
-
-L'idea è che cambio come associo i thread agli indici della struttura dati. 
-
-= CUDA
+    if tid == 0:
+        out_arr[cuda.blockIdx.x] = in_arr[base]
+```
 
 
-https://dournac.org/info/gpu_sum_reduction
-
-//TODO guardare il PDF del labolatorio
-//Aggiungere esempio reduction
 
 == Prefix sum
 
