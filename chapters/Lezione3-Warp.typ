@@ -8,19 +8,20 @@ Panoramica logica:
 
 - a loro volta i thread sono collezionati   (a livello logico) in blocchi. Essi vengono eseguiti *concorrentemente* e possono cooperare attraverso barriere di sincronizzazione. Un blocco di thread usa una *shared memory* per la comunicazione intra-thread.
 
-- una grid è un array di thread block che *eseguono tutti lo stesso kernel*, legge e scrive su una memoria globale e sincronizza le chiamate di kernel tra di loro dipendenti.
+- una grid è un array di thread block che *eseguono tutti lo stesso kernel*, legge e scrive su una memoria globale e sincronizza le chiamate di kernel tra di loro dipendenti. // TODO: rimuovere da "legge e scrive" in poi?
 
 === Mapping logico-fisico
 
 Vale la seguente mappatura:
 - un thread viene mappato fisicamente su un *CUDA core* (unità esegutiva hardware)
 
-- un blocco viene assegnato ad un singolo *SM* (non può essere spalmato su più SM).
+- un blocco viene assegnato ad un singolo *SM* (non può essere spalmato su più SM)
+
 #nota()[
   Un singolo SM può eseguire più blocchi contemporaneamente (se possiede abbastanza risorse)
 ]
 
-- una grid (insieme dei thread lanciati per un certo kernel) viene mappata sull'intero device.
+- una grid (insieme dei thread lanciati per un certo kernel) viene mappata sull'intero device
 
 #figure(
   {
@@ -175,10 +176,10 @@ Vale la seguente mappatura:
 
 Un *warp* è un gruppo di $32$ thread consecutivi (ID sequenziali) che vengono eseguti contemporaneamente.
 
-Se i blocchi sono una suddivisione solamente a livello logico, un *warp* è un concetto fisico, ovvero come l'hardware organizza ed esegue fisicamente i thread. Ogni blocco viene linearizzato in più wrap seguendo un approccio *row-major*, prima sulla dimensione $x$, poi $y$ e infine $z$.
+Se i blocchi sono una suddivisione solamente a livello logico, un *warp* è un concetto fisico, ovvero come l'hardware organizza ed esegue fisicamente i thread. Ogni blocco viene linearizzato in più warp seguendo un approccio *row-major*, prima sulla dimensione $x$, poi $y$ e infine $z$.
 
 #informalmente()[
-  L'hardware se ne sbatte dell'organizzazione a blocchi dei thread. Esso vede la griglia come sequenze di warp. L'ordine 2D "logico" viene linearizzato in $32$ thread sequenziali.
+  L'hardware ignora l'organizzazione a blocchi dei thread. Esso vede la griglia come sequenze di warp. L'ordine 2D "logico" viene linearizzato in $32$ thread sequenziali.
 ]
 
 L'ideale è che i blocchi siano multipli di $32$ in modo da permettere una buona mappatura sull'hardware.
@@ -257,7 +258,7 @@ L'ideale è che i blocchi siano multipli di $32$ in modo da permettere una buona
   },
   caption: [
     Linearizzazione row-major di un blocco $4*4$ in warp.\
-    Ogni gruppo di $4$ thread consecutivi forma un warp (in questo esempio semplificato)
+    (In questo esempio, per semplicità, ogni gruppo di $4$ thread consecutivi forma un warp)
   ],
 )
 
@@ -267,7 +268,7 @@ L'ideale è che i blocchi siano multipli di $32$ in modo da permettere una buona
 
 Idealmente, tutti i thread di un warp eseguono in parallelo la stessa istruzione (codice univoco dettato dal kernel) su dati diversi (modello SIMD). Tutti i thread *evolvono in parallelo su dati diversi*
 
-Il modello *SIMT*, introduce un PC (Program Counter) per ogni thread. In questo modo ognuno di essi può seguire un cammino di esecuzione diverso. Viene introdotto il problema della *wrap divergence*.
+Il modello *SIMT*, introduce un PC (Program Counter) per ogni thread. In questo modo ognuno di essi può seguire un cammino di esecuzione diverso. Viene introdotto il problema della *warp divergence*.
 
 == Scheduling
 
@@ -289,6 +290,7 @@ Entra in funzione quando l'Host (CPU) lancia un Kernel:
   Una volta che un blocco è assegnato a un SM, ci rimane fino alla fine della sua esecuzione. *Non* può "migrare" su un altro SM.
 ]
 
+// TODO: rimuovere disegno?
 #figure(
   {
     import cetz.draw: *
@@ -412,7 +414,7 @@ Entra in funzione quando l'Host (CPU) lancia un Kernel:
     })
   },
   caption: [
-    Schedulazione dei blocchi sui Streaming Multiprocessor (SM).\
+    Schedulazione dei blocchi sugli Streaming Multiprocessor (SM).\
     I blocchi colorati nella grid vengono assegnati dinamicamente agli SM disponibili
   ],
 )
@@ -420,7 +422,7 @@ Entra in funzione quando l'Host (CPU) lancia un Kernel:
 
 === Block scheduling
 
-I blocchi vengono assegnati in maniera *dinamica* agli SM (contiene molte unità funzionali e risorse) man mano che le risorse diventano disponibili.
+I blocchi vengono assegnati in maniera *dinamica* agli SM (che contengono molte unità funzionali e risorse) man mano che le risorse diventano disponibili.
 
 L'SM ha il compito di gestire uno o più blocchi. Un SM *accetta un nuovo blocco solo se ha abbastanza risorse* hardware (registri e Shared Memory) per ospitare tutti i thread di quel blocco.
 
@@ -431,8 +433,7 @@ L'SM ha il compito di gestire uno o più blocchi. Un SM *accetta un nuovo blocco
 Appena un blocco viene caricato sull'SM, viene logicamente suddiviso in Warps.
 
 #attenzione()[
-  é importante che un certo blocco *non* dipenda dal risultato di altri blocchi.
-
+  È importante che un certo blocco *non* dipenda dal risultato di altri blocchi.
   La cooperazione inoltre avviene solamente all'interno del blocco (tranne casi particolari).
 ]
 
@@ -461,7 +462,7 @@ $
 $
 
 #nota()[
-  Se saturo il numero di risorse per un thread singolo (tante varibili che saturano i registri), lo sheduling genrale soffre.
+  Se saturo il numero di risorse per un thread singolo (tante varibili che saturano i registri), lo sheduling generale soffre.
 
   Un'alta occupazione non garantisce per forza delle buone performance.
 ]
@@ -470,7 +471,7 @@ Anche le memorie sono improntante a dimensione $32$ sempre per ridurre la latenz
 
 == Branch control
 
-I *branch* rendono inefficiente il sistema. Quando un branch viene eseguito esso causa una "divisione" del flusso di esecuzione. All'interno di un warp due thread potrebbe seguire percorsi diversi, rendendo necessaria la *sincronizzazione*.
+Le operazioni di *branch* rendono inefficiente il sistema. Quando una branch viene eseguita essa causa una "divisione" del flusso di esecuzione. All'interno di un warp due thread potrebbe seguire percorsi diversi, rendendo necessaria la *sincronizzazione*.
 
 I gruppi di thread così creati, non sono più eseguiti in modo parallelo ma in modo sequenziale.
 
