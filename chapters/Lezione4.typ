@@ -409,7 +409,7 @@ $
       // PASSO 6: Final Array
       let y5 = y4 - 1.1
       content((1.5, y5 - 0.3), anchor: "west", 
-              text(size: 9pt, weight: "bold", fill: rgb(0, 120, 0))[Array finale])
+              text(size: 9pt, weight: "bold")[Array finale])
       
       for i in range(4) {
         rect((i * block_w, y5), ((i + 1) * block_w, y5 + block_h), 
@@ -421,9 +421,6 @@ $
     Schema della parallel scan per array di grandi dimensioni.
   ]
 )
-
-
-
 Passaggi: 
 1. Ogni blocco calcola una *scan locale* e produce un *valore di somma parziale* (l'ultimo elemento della scan locale). Il risultato è che ogni blocco ha i numeri progressivi corretti al suo interno, ma non tiene conto delle somme dei blocchi precedenti.
 
@@ -436,6 +433,201 @@ Passaggi:
 3. Infine, viene lanciato un kernel in cui ogni thread del blocco $K$ aggiunge l'offset corrispondente al proprio elemento. Si ottiene così l'array finale corretto.
 
 
+Fissando $N = "BLOCKSIZE"$, la *complessità temporale* di questa strategia è la seguente: Su ogni blocco viene eseguita una scan locale. Siccome ad ogni passo viene dimezzato il numero di thread attivi, la complessità temporale è pari a *$Theta(log(N))$*.
+
+Tuttavia, andando a misurare la *work effeciency*, ovvero il numero totale di operazioni eseguite da tutti i thread (inclusi anche i calcoli inutili), risulta essere *$O(N log(N))$*, che è peggiore della complessità sequenziale *$O(N)$*.
+
+=== Prefix-Sum con work efficiency
+
+Esiste una versione *$mg("work efficinty")$* dell'algoritmo. Essa si basa sul concetto di albero binario bilanciato e si divide in due fasi distinte: *Up-Sweep* (Riduzione) e *Down-Sweep*.
+
+*Up-Sweep*: Si costruisce un albero binario bilanciato sopra l'array di input, dove ogni nodo rappresenta la somma dei suoi figli. Si parte dai nodi foglia (gli elementi dell'array) e si risale fino alla radice (prefix-sum totale), calcolando le somme parziali. 
+
+*Down-Sweep*: Si ripercorre l'albero dalla radice verso le foglie per distribuire le somme e calcolare i prefissi.
+  - Il valore della radice viene inizializzato a $0$ (vincolo della scan esclusiva).
+
+  - Ad ogni passo, un nodo _padre_ possiede un certo valore $P$ e due _figli_: sinistro ($L$) e destro ($R$).
+
+    - Il _figlio_ sinistro eredita il valore del genitore: $"New"_L = P$.
+
+    - Il _figlio_ destro riceve la somma del genitore più il valore vecchio del figlio sinistro: $"New"_R = P + "Old"_L$.
+  Alla fine di questa fase, la radice contiene la somma totale dell'array.
+
+#figure(
+  {
+    import cetz.draw: *
+    
+    cetz.canvas({
+      let cell_w = 0.5
+      let cell_h = 0.4
+      let level_gap = 0.9
+      let column_offset = 5.5
+      
+      // === UP-SWEEP (REDUCE PHASE) - COLONNA SINISTRA ===
+      content((1, 1.0), anchor: "west", text(size: 10pt, weight: "bold")[Up-Sweep])
+      
+      // Livello 0 (input array)
+      let y0 = 0
+      let values0 = (3, 1, 7, 0, 4, 1, 6, 3)
+      for i in range(8) {
+        let x = i * cell_w
+        rect((x, y0), (x + cell_w, y0 + cell_h), fill: rgb(200, 220, 255), stroke: black)
+        content((x + cell_w/2, y0 + cell_h/2), text(size: 8pt)[#values0.at(i)])
+      }
+      
+      // Livello 1 (stride 1)
+      let y1 = y0 - level_gap
+      let values1 = (3, 4, 7, 7, 4, 5, 6, 9)
+      for i in range(8) {
+        let x = i * cell_w
+        let fill = if calc.rem(i, 2) == 1 { rgb(255, 200, 200) } else { rgb(200, 220, 255) }
+        rect((x, y1), (x + cell_w, y1 + cell_h), fill: fill, stroke: black)
+        content((x + cell_w/2, y1 + cell_h/2), text(size: 8pt)[#values1.at(i)])
+      }
+      
+      // Frecce livello 0 -> 1
+      for i in range(4) {
+        let x_left = i * 2 * cell_w + cell_w/2
+        let x_right = (i * 2 + 1) * cell_w + cell_w/2
+        let x_target = x_right
+        line((x_left, y0 - 0.05), (x_target, y1 + cell_h + 0.05), 
+             stroke: (paint: red, thickness: 1pt), mark: (end: ">"))
+        line((x_right, y0 - 0.05), (x_target, y1 + cell_h + 0.05), 
+             stroke: (paint: red, thickness: 1pt))
+      }
+      
+      // Livello 2 (stride 2)
+      let y2 = y1 - level_gap
+      let values2 = (3, 4, 7, 11, 4, 5, 6, 14)
+      for i in range(8) {
+        let x = i * cell_w
+        let fill = if calc.rem(i, 4) == 3 { rgb(255, 200, 200) } else if calc.rem(i, 2) == 1 { rgb(220, 220, 220) } else { rgb(200, 220, 255) }
+        rect((x, y2), (x + cell_w, y2 + cell_h), fill: fill, stroke: black)
+        content((x + cell_w/2, y2 + cell_h/2), text(size: 8pt)[#values2.at(i)])
+      }
+      
+      // Frecce livello 2 -> 1
+      for i in range(2) {
+        let x_left = (i * 4 + 1) * cell_w + cell_w/2
+        let x_right = (i * 4 + 3) * cell_w + cell_w/2
+        line((x_left, y1 - 0.05), (x_right, y2 + cell_h + 0.05), 
+             stroke: (paint: red, thickness: 1pt), mark: (end: ">"))
+        line((x_right, y1 - 0.05), (x_right, y2 + cell_h + 0.05), 
+             stroke: (paint: red, thickness: 1pt))
+      }
+      
+      // Livello 3 (stride 4) - radice
+      let y3 = y2 - level_gap
+      let values3 = (3, 4, 7, 11, 4, 5, 6, 25)
+      for i in range(8) {
+        let x = i * cell_w
+        let fill = if i == 7 { rgb(255, 200, 200) } else if calc.rem(i, 4) == 3 { rgb(220, 220, 220) } else if calc.rem(i, 2) == 1 { rgb(220, 220, 220) } else { rgb(200, 220, 255) }
+        rect((x, y3), (x + cell_w, y3 + cell_h), fill: fill, stroke: black)
+        content((x + cell_w/2, y3 + cell_h/2), text(size: 8pt)[#values3.at(i)])
+      }
+      
+      // Frecce livello 3 -> 2
+      let x_left = 3 * cell_w + cell_w/2
+      let x_right = 7 * cell_w + cell_w/2
+      line((x_left, y2 - 0.05), (x_right, y3 + cell_h + 0.05), 
+           stroke: (paint: red, thickness: 1pt), mark: (end: ">"))
+      line((x_right, y2 - 0.05), (x_right, y3 + cell_h + 0.05), 
+           stroke: (paint: red, thickness: 1pt))
+      
+      // === DOWN-SWEEP (DISTRIBUTE PHASE) - COLONNA DESTRA ===
+      content((column_offset+1, 1.0), anchor: "west", text(size: 10pt, weight: "bold")[Down-Sweep])
+      
+      // Livello 0 down (inizializza radice a 0)
+      let dy0 = y0
+      let dvalues0 = (3, 4, 7, 11, 4, 5, 6, 0)
+      for i in range(8) {
+        let x = column_offset + i * cell_w
+        let fill = if i == 7 { rgb(200, 255, 200) } else if calc.rem(i, 4) == 3 { rgb(220, 220, 220) } else if calc.rem(i, 2) == 1 { rgb(220, 220, 220) } else { rgb(200, 220, 255) }
+        rect((x, dy0), (x + cell_w, dy0 + cell_h), fill: fill, stroke: black)
+        content((x + cell_w/2, dy0 + cell_h/2), text(size: 8pt)[#dvalues0.at(i)])
+      }
+      
+      // Livello 1 down
+      let dy1 = dy0 - level_gap
+      let dvalues1 = (3, 4, 7, 0, 4, 5, 6, 11)
+      for i in range(8) {
+        let x = column_offset + i * cell_w
+        let fill = if i == 3 or i == 7 { rgb(200, 255, 200) } else if calc.rem(i, 2) == 1 { rgb(220, 220, 220) } else { rgb(200, 220, 255) }
+        rect((x, dy1), (x + cell_w, dy1 + cell_h), fill: fill, stroke: black)
+        content((x + cell_w/2, dy1 + cell_h/2), text(size: 8pt)[#dvalues1.at(i)])
+      }
+      
+      // Frecce down livello 0 -> 1 (solo una coppia: indici 3 e 7)
+      let x_parent = column_offset + 7 * cell_w + cell_w/2
+      let x_left = column_offset + 3 * cell_w + cell_w/2
+      let x_right = column_offset + 7 * cell_w + cell_w/2
+      line((x_parent, dy0 - 0.05), (x_left, dy1 + cell_h + 0.05), 
+           stroke: (paint: green.darken(20%), thickness: 1pt), mark: (end: ">"))
+      line((x_parent, dy0 - 0.05), (x_right, dy1 + cell_h + 0.05), 
+           stroke: (paint: green.darken(20%), thickness: 1pt), mark: (end: ">"))
+      
+      // Livello 2 down
+      let dy2 = dy1 - level_gap
+      let dvalues2 = (3, 0, 7, 4, 4, 0, 6, 16)
+      for i in range(8) {
+        let x = column_offset + i * cell_w
+        let fill = if i == 1 or i == 3 or i == 5 or i == 7 { rgb(200, 255, 200) } else { rgb(200, 220, 255) }
+        rect((x, dy2), (x + cell_w, dy2 + cell_h), fill: fill, stroke: black)
+        content((x + cell_w/2, dy2 + cell_h/2), text(size: 8pt)[#dvalues2.at(i)])
+      }
+      
+      // Frecce down livello 1 -> 2 (due coppie: indici (1,3) e (5,7))
+      for i in (0, 1) {
+        let parent_idx = if i == 0 { 3 } else { 7 }
+        let left_idx = if i == 0 { 1 } else { 5 }
+        let right_idx = if i == 0 { 3 } else { 7 }
+        
+        let x_parent = column_offset + parent_idx * cell_w + cell_w/2
+        let x_left = column_offset + left_idx * cell_w + cell_w/2
+        let x_right = column_offset + right_idx * cell_w + cell_w/2
+        line((x_parent, dy1 - 0.05), (x_left, dy2 + cell_h + 0.05), 
+             stroke: (paint: green.darken(20%), thickness: 1pt), mark: (end: ">"))
+        line((x_parent, dy1 - 0.05), (x_right, dy2 + cell_h + 0.05), 
+             stroke: (paint: green.darken(20%), thickness: 1pt), mark: (end: ">"))
+      }
+      
+      // Livello 3 down (risultato finale - exclusive scan)
+      let dy3 = dy2 - level_gap
+      let dvalues3 = (0, 3, 4, 11, 11, 15, 16, 22)
+      for i in range(8) {
+        let x = column_offset + i * cell_w
+        rect((x, dy3), (x + cell_w, dy3 + cell_h), fill: rgb(200, 255, 200), stroke: black + 1.5pt)
+        content((x + cell_w/2, dy3 + cell_h/2), text(size: 8pt, weight: "bold")[#dvalues3.at(i)])
+      }
+      
+      // Frecce down livello 2 -> 3 (quattro coppie: (0,1), (2,3), (4,5), (6,7))
+      for i in range(4) {
+        let left_idx = i * 2
+        let right_idx = i * 2 + 1
+        let parent_idx = right_idx
+        
+        let x_parent = column_offset + parent_idx * cell_w + cell_w/2
+        let x_left = column_offset + left_idx * cell_w + cell_w/2
+        let x_right = column_offset + right_idx * cell_w + cell_w/2
+        line((x_parent, dy2 - 0.05), (x_left, dy3 + cell_h + 0.05), 
+             stroke: (paint: green.darken(20%), thickness: 1pt), mark: (end: ">"))
+        line((x_parent, dy2 - 0.05), (x_right, dy3 + cell_h + 0.05), 
+             stroke: (paint: green.darken(20%), thickness: 1pt), mark: (end: ">"))
+      }
+      
+      // Etichette
+      content((4.5, y0 + cell_h/2), anchor: "west", text(size: 7pt, fill: gray)[Input])
+      content((4.5, y3 + cell_h/2), anchor: "west", text(size: 7pt, fill: gray)[Root])
+      content((column_offset + 4.5, dy0 + cell_h/2), anchor: "west", text(size: 7pt, fill: gray)[Root = 0])
+      content((column_offset + 4.5, dy3 + cell_h/2), anchor: "west", text(size: 7pt, fill: gray)[Output])
+    })
+  },
+  caption: [
+    Algoritmo work-efficient di scan basato su albero binario.
+  ]
+)
+
+Utilizzando questa versione, il numero di operazioni è stato ridotto a $2(n-1) = O(N)$. Il tempo di esecuzione rimane *$Theta(log(N))$*, in quanto l'altezza dell'albero binario è logaritmica rispetto al numero di elementi ($log_2 N $).
 
 == Operazioni atomiche
 
