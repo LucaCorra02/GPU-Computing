@@ -631,6 +631,14 @@ Utilizzando questa versione, il numero di operazioni è stato ridotto a $2(n-1) 
 
 == Operazioni atomiche
 
+Le *operazioni atomiche* sono operazioni di lettura/scrittura su una variabile condivisa che vengono eseguite in modo *indivisibile*. Ciò significa che una volta iniziata un'operazione atomica, nessun altro thread può interferire con essa fino a quando non è completata.
+
+Questa indivisibilità viene garantita dall'hardware, il quale assicura che le operazioni concorrenti vengano serializzate. L'ordine di esecuzione tuttavia è imprevedibile.
+
+
+
+
+
 Operazione di lettura/scrittura in cui convergono molti thread e deve essere garantita dall'hardware che l'operaizoni sia atomica. 
 
 Possiamo fare tante operazioni atomiche di diversa natura. Le operazioni atomiche sono: 
