@@ -284,24 +284,158 @@ def blockParReduce_no_div(in_arr, out_arr, n):
         out_arr[cuda.blockIdx.x] = in_arr[base]
 ```
 
+== Parallel pattern: scan
+
+L'operazione *parallel scan* (chiamata anche prefix-sum) considera un operazione binaria associativa $xor$ e un array di input $ a= [x_0, x_1, ..., x_(n-1)]$. Risultato: 
+$ 
+  b = [a, (a_0 xor a_1), dots, (a_0 xor a_1 xor dots xor a_(n-1))]
+$
+
+#nota()[
+  Un'operatore $xor$ di scan deve avere le seguenti caratteristiche:
+  - *commutativo*: $a xor b = b xor a$
+  - *associativo*: $(a xor b) xor c = a xor (b xor c)$
+
+  Tramite queste due proprietà gli elementi possono essere riordinati e combinati in qualasiasi modo senza alterare il risultato finale, ottimo per il calcolo parallelo.
+]
+
+=== Scan su big data
+
+#informalmente()[
+  In caso di un array di grandi dimensioni può essere necessario *dividere l'array in blocchi più piccoli*, eseguire la scan su ciascun blocco in parallelo, e poi combinare i risultati dei blocchi per ottenere il risultato finale.
+]
 
 
-== Prefix sum
+#figure(
+  {
+    import cetz.draw: *
+    
+    cetz.canvas({
+      let block_w = 1.2
+      let block_h = 0.5
+      let small_h = 0.35
+      
+      // PASSO 1: Array iniziale di valori arbitrari
+      content((1.5, 0.8), anchor: "west", text(size: 9pt, weight: "bold")[Array iniziale])
+      
+      // Array grande diviso in 4 sezioni visibili
+      for i in range(4) {
+        rect((i * block_w, 0), ((i + 1) * block_w, block_h), 
+             fill: rgb(12, 160, 220), stroke: (thickness: 1.5pt))
+      }
+      
+      // Frecce che vanno verso i blocchi divisi
+      for i in range(4) {
+        let x = i * block_w + block_w / 2
+        line((x, -0.15), (x, -0.5), mark: (end: ">"), stroke: (thickness: 1pt))
+      }
+      
+      // PASSO 2: Scan Block (blocchi separati)
+      let y1 = -1.0
+      content((0, y1 + 0.35), anchor: "west", text(size: 8pt, weight: "bold")[Scan Block 0])
+      content((block_w, y1 + 0.35), anchor: "west", text(size: 8pt, weight: "bold")[Scan Block 1])
+      content((2 * block_w, y1 + 0.35), anchor: "west", text(size: 8pt, weight: "bold")[Scan Block 2])
+      content((4.2 * block_w, y1 + 0.25), anchor: "west", text(size: 8pt, weight: "bold")[Scan Block ])
+      
+      for i in range(4) {
+        rect((i * block_w, y1), ((i + 1) * block_w, y1 + block_h), 
+             fill: rgb(120, 160, 220), stroke: (thickness: 1.5pt))
+      }
+      
+      // Frecce dai blocchi all'array ausiliario
+      let y2 = y1 - 1.0
+      for i in range(4) {
+        let x = i * block_w + block_w / 2
+        line((x, y1 - 0.1), (1.8 + i * 0.4, y2 + 0.5), 
+             mark: (end: ">"), stroke: (thickness: 1pt, dash: "dashed"))
+      }
+      
+      // PASSO 3: Store Block Sums in Auxiliary Array
+      content((0, y2 + 0.85), anchor: "west", 
+              text(size: 8pt, weight: "bold")[])
+      
+      // Rettangolo di sfondo verde
+      rect((1.4, y2 - 1.5), (3.4, y2 + 0.7), 
+           fill: rgb(200, 230, 200, 80), stroke: none)
+      
+      // Array ausiliario (piccolo, 4 celle)
+      for i in range(4) {
+        let fill_col = if i == 0 { white } else { rgb(120, 160, 220) }
+        rect((1.8 + i * 0.4, y2), (1.8 + (i + 1) * 0.4, y2 + small_h), 
+             fill: fill_col, stroke: black)
+      }
+      
+      // Freccia verso scan delle somme
+      let y3 = y2 - 0.8
+      line((2.4, y2 - 0.1), (2.4, y3 + 0.5), 
+           mark: (end: ">"), stroke: (thickness: 1pt))
+      
+      // PASSO 4: Scan Block Sums
+      content((3.5, y3 + 0.55), anchor: "west", 
+              text(size: 8pt, weight: "bold")[Somma dei blocchi])
+      
+      for i in range(4) {
+        rect((1.8 + i * 0.4, y3), (1.8 + (i + 1) * 0.4, y3 + small_h), 
+             fill: rgb(120, 160, 220), stroke: black)
+      }
+      
+      // Frecce che tornano verso i blocchi finali
+      let y4 = y3 - 1.0
+      for i in range(4) {
+        let x_src = 1.8 + i * 0.4 + 0.2
+        let x_dst = i * block_w + block_w / 2
+        line((x_src, y3 - 0.1), (x_dst, y4 + 0.65), 
+             mark: (end: ">"), stroke: (thickness: 1pt, dash: "dashed"))
+      }
+      
+      // PASSO 5: Add Scanned Block Sums
+      content((5, y4 + 0.3), anchor: "west", 
+              text(size: 8pt, weight: "bold")[Somma blocchi + offset])
+      content((0, y4 + 0.3), anchor: "west", 
+              text(size: 8pt, weight: "bold")[values of Scanned Blocks 1-n])
+      
+      for i in range(4) {
+        rect((i * block_w, y4), ((i + 1) * block_w, y4 + block_h), 
+             fill: rgb(120, 160, 220), stroke: (thickness: 1.5pt))
+      }
+      
+      // Freccia finale verso array risultante
+      for i in range(4) {
+        let x = i * block_w + block_w / 2
+        line((x, y4 - 0.15), (x, y4 - 0.5), 
+             mark: (end: ">"), stroke: (thickness: 1.5pt, paint: rgb(0, 120, 0)))
+      }
+      
+      // PASSO 6: Final Array
+      let y5 = y4 - 1.1
+      content((1.5, y5 - 0.3), anchor: "west", 
+              text(size: 9pt, weight: "bold", fill: rgb(0, 120, 0))[Array finale])
+      
+      for i in range(4) {
+        rect((i * block_w, y5), ((i + 1) * block_w, y5 + block_h), 
+             fill: rgb(12, 160, 220), stroke: (thickness: 1.5pt))
+      }
+    })
+  },
+  caption: [
+    Schema della parallel scan per array di grandi dimensioni.
+  ]
+)
 
-Sequenziale: complessità linerare, in o(n) passi arriviamo alla soluzione. 
 
-Quando ho un array di grandi diemensioni possono fare una scan sui singoli blocchi. Una volta realizzata la scan sui singolo blocchi possono andare a metterli assieme. 
 
-posso lavolare parallelamente sui blocchi. 
+Passaggi: 
+1. Ogni blocco calcola una *scan locale* e produce un *valore di somma parziale* (l'ultimo elemento della scan locale). Il risultato è che ogni blocco ha i numeri progressivi corretti al suo interno, ma non tiene conto delle somme dei blocchi precedenti.
 
-Analisi dell'efficienza: 
-- L'algoritmo non è work efficient. 
-- la profondità è logaritmica, ma il numero di operazioni è lineare, complessit totale è $O(n log n)$.
+  #nota()[
+    é importante che i blocchi in cui viene partizionato l'array stiano in *shared memory* per massimizzare le prestazioni. 
+  ]
 
-La soluzione è un sistema work efficient. L'idea è usare un albero bianrio attraverso 2 passate otteniamo un risultato lineare. 
+2. Le somme parziali di ogni blocco vengono raccolte in un array ausiliario più piccolo. Si esegue una *scan* su questo array. Si ottiene così un array di *offset* che rappresentano qual'è l'offset di ogni blocco.
 
-//Aggiungere immagine
-sweep tree binary tree
+3. Infine, viene lanciato un kernel in cui ogni thread del blocco $K$ aggiunge l'offset corrispondente al proprio elemento. Si ottiene così l'array finale corretto.
+
+
 
 == Operazioni atomiche
 
@@ -318,4 +452,5 @@ Possiamo fare tante operazioni atomiche di diversa natura. Le operazioni atomich
 Istogramma di testo. Vogliamo raccogliere le frequenze di un item. Dobbiamo usare le operazioni atomiche per la scrittura. 
 
 Nell'immagine ogni thread si occupa di un elemento, tutti i thread scrivono dentro la stessa struttura dati. 
+
 
