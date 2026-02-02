@@ -2,7 +2,7 @@
 
 == Parallel reduction
 
-La *reduction* è un'operazione che va a sommare gli elementi di un array di grandi diemensioni.
+La *reduction* è'un operazione che va a sommare gli elementi di un array di grandi diemensioni:
 $
   (x_1, dots, x_n) -> s = sum_(i=1)^(n) x_i
 $
