@@ -633,24 +633,30 @@ Utilizzando questa versione, il numero di operazioni è stato ridotto a $2(n-1) 
 
 Le *operazioni atomiche* sono operazioni di lettura/scrittura su una variabile condivisa che vengono eseguite in modo *indivisibile*. Ciò significa che una volta iniziata un'operazione atomica, nessun altro thread può interferire con essa fino a quando non è completata.
 
-Questa indivisibilità viene garantita dall'hardware, il quale assicura che le operazioni concorrenti vengano serializzate. L'ordine di esecuzione tuttavia è imprevedibile.
+Questa indivisibilità viene garantita dall'hardware, il quale assicura che le operazioni concorrenti vengano serializzate. 
+#nota()[
+  L'ordine di esecuzione tuttavia è imprevedibile.
+]
 
+Un'operazione di read-modify-write (leggere il vecchio valore, calcolarne uno nuovo e sovrascriverlo), viene tradotta in una singola istruzione hardware su un particolare indirizzo di memoria. L'hardware assicura che nessun altro thread possa eseguire un'operazione di read-modify-write sulla stessa locazione di memoria, fino a quando l'operazione precedente non è terminata. Solitamente le richieste vengono gestite tramite una coda. 
 
+Numba, mette a disposizioni le operazioni atomiche attraverso il pacchetto ``` numba.cuda.atomic ```. Alcune operazioni: 
 
+#figure(
+  table(
+    columns: 4,
+    align: center,
+    [*Operazione*], [*Firma*], [*Tipi supportati*], [*Scopo*],
+    [`atomic.add` \ `atomic.sub`], [`add(ary, idx, val)` \ `sub(ary, idx, val)`], [int32, int32, float32, float64], [Somma e sottrazione atomica \ $"ary"["idx"] <- "ary"["idx"]+"val"$],
 
-
-Operazione di lettura/scrittura in cui convergono molti thread e deve essere garantita dall'hardware che l'operaizoni sia atomica. 
-
-Possiamo fare tante operazioni atomiche di diversa natura. Le operazioni atomiche sono: 
-- add
-- sub 
-- in
-- dec
-- min 
-- max
-
-Istogramma di testo. Vogliamo raccogliere le frequenze di un item. Dobbiamo usare le operazioni atomiche per la scrittura. 
-
-Nell'immagine ogni thread si occupa di un elemento, tutti i thread scrivono dentro la stessa struttura dati. 
-
-
+    [`atomic.min` \ `atomic.max`], [`max(ary, idx, val)` \ `min(ary, idx, val)` ], [int32, uint32, int64, uint64, float32, float64], [Massimo e minimo atomico], 
+    
+    [`atomic.and_` \ `atomic.or_` \ `atomic.xor` ], [`and_(ary, idx, val)` \ `or_(ary, idx, val)` \ `xor(ary, idx, val)`], [int32, uint32, int64, uint64], [Scambio condizionale],
+    [`atomic.exch`], [`exch(ary, idx, val)`], [int32, uint32, int64, uint64, float32], [Scambio incondizionale. Sostituitsce $"ary"["idx"]$ con $"val"$, ritorna il vecchi valore ],
+    [`atomic.cas`], [`cas(ary, idx, old, val)`], [int32, uint32, int64, uint64, float32], [Condizione atomica, if $"ary"["idx"] == "old"$ scrive $"val"$],
+  ),
+  caption: [Operazioni atomiche disponibili in Numba CUDA]
+)
+#esempio()[
+  Un esempio di utilizzo può essere l'istogramma di testo. Per ogni lettera dell'alfabeto vengono contate le occorrenze di ogni lettera all'interno di un testo testo. 
+]
