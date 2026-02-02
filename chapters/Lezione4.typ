@@ -2,7 +2,7 @@
 
 == Parallel reduction
 
-La *reduction* è'un operazione che va a sommare gli elementi di un array di grandi diemensioni:
+La *reduction* è un operazione che va a ridurre con un operazione associativa (in questo caso la somma) gli elementi di un array in un solo elemento:
 $
   (x_1, dots, x_n) -> s = sum_(i=1)^(n) x_i
 $
@@ -20,7 +20,7 @@ Un approccio parallelo potrebbe sfruttare le seguenti idee:
 - Occorre sincronizzare il lavoro dei thread ad ogni passo.
 
 #attenzione()[
-  L'array di input deve avere una dimensione pari ad una potenza di $2$ (es. $2^k$). In caso contrario, occorre *padding* l'array con zeri fino a raggiungere la dimensione successiva pari ad una potenza di $2$.
+  L'array di input deve avere una dimensione pari ad una potenza di $2$ (es. $2^k$). In caso contrario, occorre inserire degli elementi di *padding* (zero) fino a raggiungere la dimensione successiva pari ad una potenza di $2$.
 ]
 
 === Versione con divergenza
@@ -51,6 +51,8 @@ def blockParReduce(array, out): # out ha dim = num_blocchi
   if tid == 0:
       out[cuda.blockIdx.x] = array[block_skip]
 ```
+
+// TODO: if idx >= n: return possibile deadlock?
 
 #nota()[
   Serve *sincronizzazione* tra uno step e il successivo. Ogni step richiede che i risultati del passo precedente siano stati elaborati.
@@ -155,7 +157,7 @@ Il problema principale della versione precedente è che introduceva una *$mr("wa
 
   Siccome il warp deve muoversi all'unisono, l'hardware è *costretto a serializzare l'esecuzione* del warp, causando un degrado delle prestazioni.
 
-La *$mg("soluzione")$* consiste nel *sequential addressing*, ovvero nel riassegnare gli indici degli elementi dell'array a thread con ID consecutivi, in modo da evitare la divergenza ( i thread inattivi saranno raggruppati alla fine):
+La *$mg("soluzione")$* consiste nel *sequential addressing*, ovvero nel riassegnare gli indici degli elementi dell'array a thread con ID consecutivi, in modo da evitare la divergenza (i thread inattivi saranno raggruppati alla fine):
 
 #figure(
   {
@@ -646,7 +648,7 @@ Utilizzando questa versione, il numero di operazioni è stato ridotto a $2(n-1) 
 
 == Operazioni atomiche
 
-Le *operazioni atomiche* sono operazioni di lettura/scrittura su una variabile condivisa che vengono eseguite in modo *indivisibile*. Ciò significa che una volta iniziata un'operazione atomica, nessun altro thread può interferire con essa fino a quando non è completata.
+Le *operazioni atomiche* sono operazioni di lettura/scrittura su una variabile condivisa che vengono eseguite in modo *indivisibile*. Ciò significa che una volta iniziata un'operazione atomica, nessun altro thread può interferire con essa fino a quando non è stata completata.
 
 Questa indivisibilità viene garantita dall'hardware, il quale assicura che le operazioni concorrenti vengano serializzate.
 #nota()[
@@ -675,12 +677,12 @@ Numba, mette a disposizioni le operazioni atomiche attraverso il pacchetto ``` n
     [`atomic.and_` \ `atomic.or_` \ `atomic.xor` ],
     [`and_(ary, idx, val)` \ `or_(ary, idx, val)` \ `xor(ary, idx, val)`],
     [int32, uint32, int64, uint64],
-    [Scambio condizionale],
+    [Scambio condizionato],
 
     [`atomic.exch`],
     [`exch(ary, idx, val)`],
     [int32, uint32, int64, uint64, float32],
-    [Scambio incondizionale. Sostituitsce $"ary"["idx"]$ con $"val"$, ritorna il vecchi valore ],
+    [Scambio non condizionato. Sostituitsce $"ary"["idx"]$ con $"val"$, restituisce il vecchio valore],
 
     [`atomic.cas`],
     [`cas(ary, idx, old, val)`],
@@ -690,5 +692,5 @@ Numba, mette a disposizioni le operazioni atomiche attraverso il pacchetto ``` n
   caption: [Operazioni atomiche disponibili in Numba CUDA],
 )
 #esempio()[
-  Un esempio di utilizzo può essere l'istogramma di testo. Per ogni lettera dell'alfabeto vengono contate le occorrenze di ogni lettera all'interno di un testo testo.
+  Un esempio di utilizzo può essere l'istogramma di un testo: Contare le occorrenze di ogni lettera.
 ]
