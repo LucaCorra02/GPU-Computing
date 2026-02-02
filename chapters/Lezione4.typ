@@ -692,5 +692,5 @@ Numba, mette a disposizioni le operazioni atomiche attraverso il pacchetto ``` n
   caption: [Operazioni atomiche disponibili in Numba CUDA],
 )
 #esempio()[
-  Un esempio di utilizzo può essere l'istogramma di un testo: Contare le occorrenze di ogni lettera.
+  Un esempio di utilizzo può essere l'istogramma di un testo: contare le occorrenze di ogni lettera.
 ]
