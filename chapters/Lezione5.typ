@@ -1,37 +1,43 @@
 #import "../template.typ": *
 
-= Lezione 5 
+== Cache su GPU
 
-== Memory
-Le cache sulla GPU possono essere : 
-- L1 (una per ogni SM)
-- L2 (condivisa tra tutti gli SM)
+Su una GPU esistono in genere $4$ tipi di cache: 
+- L1: Una per ogni SM
+- L2: Condivisa tra tutti gli SM della GPU
+- Read only constant
+- Read only texture 
 
-Le cache a volte sono fisicamente in un area della device memory. 
+Le ultime due cache sono presenti su ogni SM e vengono utilizzate per migliorare le prestazioni in lettura dai rispettivi in lettura dai rispettivi spazi di memoria sul device. 
 
-``` cudaFuncSetAttribute``` è una primitiva run time o compile time che permette di dividere in modo arbitrario la L1 cache, tra L1 e shared memory.
-
-Il numero massimo di blocchi ospitati all'interno di un SM può scendere se all'interno di un blocchi richiedo molte risorse (registre e shared memory), in quanto esse sono condivise nell'SM. Il numero massimo di blocchi non è mai fisso ma dipende dall'occupancy (tasso di warp attivi simltuanamente nell'SM). A compile time si viene a sapere il nuemro di blocchi operativi simultaneamente. 
+Solitamente le cache L1 e L2 vengono usate per memorizzare dati in *memoria locale* e *globale*, incluso lo spilling dei registri (eccessi nell'uso di local memory).\
+Inoltre, tramite la primitiva ` cudaFuncSetAttribute` è possibile a run time o compile time dividere in modo arbitrario la L1 cache, tra L1 e shared memory.
 
 == Shared memory 
 
-Dobbiamo trasportare dei dati all'interno dei core, perchè ci metto di mezzo una memoria shared tra global memory (fuori dal chip) e registri? Ha senso usare la shared memory quanto il tasso di accesso del singolo dato è molto elevato ad esempio quando i thread di un certo blocco cooperano sul blocco di dati in shared memory. il beneficio è che la bandwidth della shared memory è molto altra rispetto a quella fuori dal chip. 
+A differenza della global memory (DRAM) situata al di fuori dei chip, la *shared memory* si tratta di una memoria che risiede sul chip, offrendo una bandwidth molto più alta e una minore latenza rispetto alla DRAM globale, giustificando il costo dell'overhead aggiunto. 
 
-La shared memory viene caricata e usata intensamente dai thread di un blocco, i thread non vendono la shared memory degli altri blocchi (a meno di clustering). 
-
-Barriera di sincronizzazione. Il trasferimento di dati dalla global memory alla shared memory è distrubuiti tra i thread del blocco, ogni thread trasporta un certo set di dati.\
-Tuttavia se il trasferimento è parallelo srve sincronizzazione per garantire che per iniziare la computazione tutti i dati sono stati trasferiti, abbiamo così dei dati afffidabili (no race condition).
-
-=== Access via banking
-
-La memoria shared è organizzata in 32 bank fisici (per la dimensione del warp). 
+La shared memory ha una *visibilità a livello di blocco*. I thread all'interno dello stesso blocco comunicano attraverso shared memory, per questo motivo, la shared memory ha una vita correlata con la durata di esecuzione del blocco.  
 
 #nota()[
-  La shared memory è tagliata sulla dimensione del warp. 
+  Ha senso usare la shared memory quanto il *tasso di accesso al singolo dato è molto elevato*, ad esempio quando i thread di un certo blocco cooperano su un blocco di dati in shared memory.
 ]
 
-I 32 thread arrivano e prevelano i dati purche siano distribuiti in 32 banchi distinti. La dimensione dei banchi dipende dalla dimensione dei dati, solitamente $4$ byte(int), ovvero una word. I banchi solitamente implementato sequenze di word. 
+Siccome il *trasferimento di dati* dalla global memory alla shared memory è *distribuito* tra i thread del blocco (ogni thread trasporta un certo set di dati), è *necessaria sincronizzazione*. In quanto per iniziare la computazione è necessario che tutti i dati siano stati trasferiti, abbiamo così dei dati afffidabili (no race condition).
 
+=== Parallel access via banking
+
+La memoria shared viene divisa in $32$ moduli della stessa ampiezza chiamati *bank*. La dimensione dei banchi dipende dalla dimensione dei dati, solitamente $4$ byte(int), ovvero una word. I banchi solitamente implementato sequenze di word.
+
+#nota()[
+  La shared memory è tagliata sulla dimensione del warp, in modo tale da aumentare l'efficienza.
+]
+
+Ogni richiesta di accesso fatta di $N$ indirizzi che riguardino $N$ distinti bank sono serviti simultaneamente. 
+
+#nota()[
+  Ogni SM ha una quantità limitata di shared memory che viene ripartita tra i blocchi di thread. Il numero massimo di blocchi ospitati all'interno di un SM può scendere se all'interno di un blocco vengono richieste molte risorse (registri e shared memory), in quanto esse sono condivise nell'SM. Il numero massimo di blocchi non è mai fisso ma dipende dall'*occupancy* (tasso di warp attivi simltuanamente nell'SM).
+]
 
 Pattern di accesso. Possiamo avere: 
 - Acesso parallelo, ogni thread accede ad un blocco differente
