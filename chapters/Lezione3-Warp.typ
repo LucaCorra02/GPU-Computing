@@ -1,6 +1,5 @@
 #import "../template.typ": *
 
-// Da integrare con lezione 2
 == Gerarchia della memoria
 
 Panoramica logica:
@@ -8,7 +7,7 @@ Panoramica logica:
 
 - a loro volta i thread sono collezionati   (a livello logico) in blocchi. Essi vengono eseguiti *concorrentemente* e possono cooperare attraverso barriere di sincronizzazione. Un blocco di thread usa una *shared memory* per la comunicazione intra-thread.
 
-- una grid è un array di thread block che *eseguono tutti lo stesso kernel*, legge e scrive su una memoria globale e sincronizza le chiamate di kernel tra di loro dipendenti. // TODO: rimuovere da "legge e scrive" in poi?
+- una grid è un array di thread block che *eseguono tutti lo stesso kernel*.
 
 === Mapping logico-fisico
 
@@ -290,7 +289,6 @@ Entra in funzione quando l'Host (CPU) lancia un Kernel:
   Una volta che un blocco è assegnato a un SM, ci rimane fino alla fine della sua esecuzione. *Non* può "migrare" su un altro SM.
 ]
 
-// TODO: rimuovere disegno?
 #figure(
   {
     import cetz.draw: *
