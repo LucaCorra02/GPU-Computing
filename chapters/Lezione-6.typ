@@ -166,5 +166,17 @@ Quando creiamod dei tensori creiamo dei blocchi contigui.
   Alla fine verifico che la media sia circa zero e la deviazione sia crica 1.
 ]
 
+== Numpy e Tensor
+
+Attenzione condividono memoria. Può essere pericoloso, nel molemto in cui passo a un tensore da un numpy array e faccio operazione sul tensore allora modifico anche l'array numpy originale
+//aggiugnere esempio
+
+`unsqueexe(dim)` = aggiunge nuove dimensioni di dimensione 1 alla posizione dim. 
+`squeeze(dim)` = operazione contraria, rimuove degli $1$ dalle dimensioni
+
+La concatenazione permette di concatenare tensori diversi su una certa dimensione. 
+
+`torch.stack` 
+
 
 
