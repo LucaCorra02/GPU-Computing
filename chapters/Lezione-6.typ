@@ -138,7 +138,14 @@ Quando creiamod dei tensori creiamo dei blocchi contigui.
     y = x.trnspose(0,1)
     z = y.view(-1) #inferisce lui le dimensioni
   ```
-  La matrice viene trasposta ed è per quello che non trova più la contiguita, diventa una matrice $4*3$, di conseguenza ho una riga in pi che non ci sta nello spazio allcoato precedentemente.
+  La matrice viene trasposta ed è per quello che non trova più la contiguita.
+
+  Il concetto di contiguità significa: "I numeri che sono vicini nella matrice (logica) sono vicini anche nella striscia di memoria RAM (fisica)? 
+  
+  - Matrice originale ($3 times 4$): La prima riga è `0, 1, 2, 3`. In memoria sono seduti uno accanto all'altro? Sì (Contiguo).
+  - Matrice trasposta ($4 times 3$): La prima riga ora è composta dai numeri `0, 4, 8`. In memoria sono seduti vicini? No! Tra lo 0 e il 4 ci sono sedute altre persone (1, 2, 3) che appartengono ad altre righe della nuova matrice.
+  
+  Perché view(-1) si rompe? Il comando view(-1) è "stupido": dice "Dammi tutti i dati in fila, dall'inizio alla fine della memoria". Se lo fai sulla trasposta, view andrebbe a leggere la memoria fisica nell'ordine originale: 0, 1, 2, 3....Ma la tua matrice trasposta logicamente dovrebbe iniziare con 0, 4, 8....C'è un disaccordo tra l'ordine fisico e quello logico. PyTorch se ne accorge e ti dice: "Non posso darti una vista piatta (view) perché se leggo la memoria di fila ti do i numeri nell'ordine sbagliato rispetto alla tua trasposta".
 ]
 
 `reshape` è molto più flessibile, può implicare una ricopiatura dei dati se necessario.
