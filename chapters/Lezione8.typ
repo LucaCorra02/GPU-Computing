@@ -81,14 +81,76 @@ L'importante è che il tensore matchi sulle `in_features`. Il risultato dipende 
 
 Uso tipico con layer:
 ```py
+model = nn.Sequential(
   nn.linear(784,128)
   nn.ReLu()
-  nn.linear(128,10) #compatibili, output matcha con input
+  nn.linear(128,10)
+) #compatibili, output matcha con input
 ```
+Alla x  vengono applicati in sequena i layer che ho definito.
 
 === Inizializzazione dei pesi
 
 All'inizio la matrice dei pesi (che dovrà essere imparata) è inizializzata casualmente. Esiste una branca che studia come inizializzare i parametri, da dove si parte dipende poi come il modello evolve.
 `nn.init.xavier_normal(layer.weight)` permette di creare una matrice inizializzata secondo una certa distribuzione.
 
+//guardare image classifier
 
+Funzioni di loss.
+
+=== Mean Square loss
+Calcola la differenza quadratica elemento ad elemento.
+$
+  L_"MSE" = 1/N sum_(i=1)^N (y_i-hat(y)_i)^2
+$
+Pensalizza se gli elementi sono molto differenti tra di loro.
+
+=== L1Loss
+Misura la differenza media assoluta. più sensible agli outlier. Usata in regressione.
+
+#nota()[
+  Son funzioni entrambe convesse, essenziali per la minimiazzaione.
+]
+
+=== Binary cross-entropy
+$
+  L_"BCE" = - 1/N sum_(i=1)^N [y_i log(hat(y)_i)+(1-y_i)log(1-hat(y)_i)]
+$
+L'entropia misura il tasso di sopresa. Se prendiamo un enciclopedia qual'è la probabilità di ogni singola lettera dell'alfabeto. Per una sorgente come l'enciclipedia misura come sono distrubite le lettere, quando lego una parola lettera per lettera è la sopresa nel leggere la prossima.
+Ci dice quanto una distibuzione di probabilità abbia più o meno caos. Date due distribuzioni di probabilità $P_i$ e $P_j$. Quando ho $P_j = 1/k$ con $k$ numero simboli ho il massimo del caos.
+
+In questo caso ho un classificatore binario $0 "e" 1$. Chidiamo al modello di sputare fuori un valore che sia in [0,1]. Idialmente il modello restituisce il modello restituisce a 0 quando la pool label è molto vicina a 0.
+
+Per ongi elemento del dataset $i$, se la verità è $0$ la prima parte viene cancellata e vale la seconda. Quando la verità è $1$ la seconda parte della formula viene persa. La loss penalizza gli errori in base alla label che mi interessa (concetto entropico).
+
+== Classificazione multi classe
+
+Se facessi classificazione multiclasse e non binaria ho parecchi valori (logits) usciti dal modello. Applico il softmax e applico la negative log-likehood.
+
+Per ogni valore sputa una distribuzione di probabilità ognunga per ogni classe che abbiamo, ognuna rappresenta la probabilità che $x$ appartenga alla classe $k$.
+
+I logits sono dei valori a caso. Per riportarli nelle probabilità uso la funzione softmax
+
+Soft max restitusice una somma di probabilità con somma 1. Se prendo un dataset $D=[(x_i,y_i)]_(i=1)^n$ con label $y_i$ e dato $x_i$. Se prendo un modello $overline(y_i) = theta(M_(theta(x_i)))$ se è binario $y_i = in {0,1}$ allora il modello $theta$ appartiene a [0,1].
+
+la verosimiglianza del modello è data da:
+$
+  P(D| theta) = product overline(y_i)^(1-overline(y_i))^(1-y_i)
+$
+La probabità è molto alta quando azzecco tutto. Di solito si usa la log-likehood la produttoria si trasforma in somma (produttoria molto brutta se N è molto grande non sforo rappresentazione e se ho molte predizioni sbagliate è un problema):
+$
+  log(P(..)) = sum_(i=1)^N y_i log overline(y_i) ...
+$
+Io voglio il miglior $theta$ che spiega in modo migliroe il dataset $D$ (applicando bias). Otteniamo così il miglir mdoello ovvero il miglior theta per D.
+
+//aggiugnere formula softmax
+Nella softmax vado a definire la cross-entropy loss:
+$
+  L = -1/N ....
+$
+Adesso ho che $y_i = {1,2,dots,K}$ dove $K$ è il numero di classi. la mia log-likehood diventa:
+$
+  P(D | theta) = -1/N sum_(k=1)^N log p(y_k | x_k) = -1/N sum_(k=1)^N log(y).
+$
+i k valori che devo rappresentare li esprimo in one hote encoding (solo un 1 in posizione $j$). facendo $log overline(y)_(i,j)$ selezione solo quello di indice $j$. La maschera seleziona solo la classe $j$ e cstruisco una log-likehood che tiene conto del fatto che per l'esemplare $i$-esimo sto considerando la $j$-esima classe che mi da il valore.\
+$overline(y)$ è grande come $y_i$ e $overline(y)_i = (alpha, .. alpha_k)$ è la somma di k valori dove si spera che a spiccare sia quello di posto $j$ ovvero la classe corretta.
