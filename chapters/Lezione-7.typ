@@ -116,21 +116,135 @@ Nell'esempio sorpa il la seconda dimensione del batch del tenosore $b$ viene pos
   Se un tensore ha meno dimensioni dell'altro, `PyTorch` aggiunge virtualmente delle dimensioni $1$ a sinistra.
 ]
 
+#esempio()[
+  Supponiamo di avere il seguente codice:
+  ```py
+    A = torch.tensor([[1.], [2.], [3.], [4.]])
+    B = torch.tensor([[5., -5., 5., -5., 5.]])
+    C = A+B
+  ```
+  Dove $A$ è un vettore colonna $4 times 1$, mentre $B$ è un vettore riga $1 times 5$. In questo caso sia $A$ che $B$ vengono espansi ad una matrice $4 times 4$:
 
+  #figure(
+    scale(80%)[
+      #grid(
+        columns: (auto, auto, auto),
+        column-gutter: 1.5em,
+        row-gutter: 0.8em,
+        align: horizon,
 
+        // Colonna sinistra: A e B
+        [
+          #align(center)[
+            #text(size: 8pt, weight: "bold", fill: blue)[*A*]
+            #table(
+              columns: 1,
+              stroke: 0.5pt + black,
+              align: center + horizon,
+              inset: 3pt,
+              [1],
+              [2],
+              [3],
+              [4],
+            )
+          ]
 
+          #v(0.8em)
 
+          #align(center)[
+            #text(size: 8pt, weight: "bold", fill: blue)[*B*]
+            #table(
+              columns: 5,
+              stroke: 0.5pt + black,
+              align: center + horizon,
+              inset: 3pt,
+              [5], [−5], [5], [−5], [5],
+            )
+          ]
+        ],
 
+        // Colonna centrale: frecce e replicazioni
+        [
+          #v(0.3em)
+          #align(center)[
+            #text(size: 7pt, fill: red, weight: "bold")[replicate]
+            #text(size: 10pt, fill: red)[⟷]
 
+            #v(0.2em)
 
+            #table(
+              columns: 5,
+              stroke: 0.5pt + black,
+              align: center + horizon,
+              inset: 3pt,
+              [1], [1], [1], [1], [1],
+              [2], [2], [2], [2], [2],
+              [3], [3], [3], [3], [3],
+              [4], [4], [4], [4], [4],
+            )
+          ]
 
-//aggiungere esempio broadcasting con somma
+          #v(0.8em)
 
-Una somam di due vettori 1*4 e 4*1 è una matrice 4*4.
+          #align(center)[
+            #text(size: 7pt, fill: red, weight: "bold")[replicate]
+            #text(size: 10pt, fill: red)[⟺]
 
-#nota()[
-  Un vettore 1*n e n*1 non sono la stessa cosa, c'è un operazione di trasposizione in mezzo.
+            #v(0.2em)
+
+            #table(
+              columns: 5,
+              stroke: 0.5pt + black,
+              align: center + horizon,
+              inset: 3pt,
+              [5], [−5], [5], [−5], [5],
+              [5], [−5], [5], [−5], [5],
+              [5], [−5], [5], [−5], [5],
+              [5], [−5], [5], [−5], [5],
+            )
+          ]
+        ],
+
+        // Colonna destra: frecce e risultato
+        [
+          #v(1.5em)
+          #align(center)[
+            #text(size: 12pt)[↘]
+
+            #v(0.3em)
+
+            #table(
+              columns: 5,
+              stroke: 0.5pt + black,
+              align: center + horizon,
+              inset: 3pt,
+              [6], [−4], [6], [−4], [6],
+              [7], [−3], [7], [−3], [7],
+              [8], [−2], [8], [−2], [8],
+              [9], [−1], [9], [−1], [9],
+            )
+
+            #v(0.3em)
+            #text(size: 9pt, weight: "bold", fill: blue)[$C = A + B$]
+
+            #v(1.5em)
+            #text(size: 14pt)[↗]
+          ]
+        ],
+      )
+    ],
+    caption: [Broadcasting nella somma],
+  )
 ]
+
+
+=== Torch ensum
+
+
+
+
+
+
 
 Un modo coinciso per fare compoment-wise product è `torch.ensum`. Prende come parametro una stringa sche descrive cosa deve essere moltiplicato e le operazioni:
 #esempio()[
