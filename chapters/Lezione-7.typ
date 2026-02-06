@@ -1,6 +1,6 @@
 #import "../template.typ": *
 
-= Lezione-6
+= Pythorch
 
 In pythorch l'unità base sono i tensori. N-Data -> N indicies
 Sono ricchi rispetto a i dati numpy. Contiene dei dati e ogni dato ha un tipo:
