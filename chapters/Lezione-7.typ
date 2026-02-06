@@ -1,53 +1,61 @@
 #import "../template.typ": *
 
-= Pythorch
+= PyTorch
 
-In pythorch l'unità base sono i tensori. N-Data -> N indicies
-Sono ricchi rispetto a i dati numpy. Contiene dei dati e ogni dato ha un tipo:
-- Data
-- Type
-- Device (CPU o GPU)
-Inoltre ci sono una serie di proprietà che servono per il machine learning.
+Si tratta di una libreria che permette di andare a costruire modelli di deep learning. La maggior parte della libreria è scritta in `C++/Cuda`.
 
-Vengono usati per modellare tutta la parte _nuemerica_ :
-- input
-- output
-- parametri
+== Tensori
 
-Tendenzialmente dato un dato di qualsiasi natura dovremmo andare a conventrilo in un tensore. Il tensore è una sorta di "wrap".
+I tensori sono l'*unità base* di PyTorch. Si tratta di una generalizzazione di una scalare, vettore o matrice (una sorta di _wrap_). Aggiunge una serie di operazioni in più.\
+Un tensore può avere diverse dimensioni:
+- $0D -> "Scalari"$
+- $1D -> "Vettori"$
+- $2D -> "Matrici"$
+- $3D+ -> "Tensori a grande dimensioni"$
 
-Un numpyarray quando diventa un tensore condivide la memoria (sono collegati per risparmiare memoria, puntatore alla stessa locazione di memoria).
+In particolare un tensore, contiene:
+- *Dati*, valori che incapsula
+- *Type* (`dtype`), i dati che contiene avranno un certo tipico. Il tipo determina: precisione, utilizzo di memoria, operazioni valide
+- *Device*, se risiede su `CPU` o `GPU`. Possono quindi essere eseguiti sulla GPU e possono sfruttare l'accelerazione hardware
 
-Dal punto di vista delle dimensioni un tensore si legge seguendo le parentesi ``` [[[1,2,3],[4,5,6]]]``` è un tensore tri-dimensionale, la shape è `[1,3,3]`
+Vengono usati per modellare tutta la parte _nuemerica_ del nostro modello: input, output e iperparametri.
 
-== Tenosre
-
-Per inizializzare un tensore usiamo:
+Per inizializzare un tensore da dei dati, possiamo:
 ```py
   import torch
   data = [[1,2],[3,4]]
   x_data = torch.tensor(data)
   print(x_data)
 ```
+
 #nota()[
   Il tipo viene dedotto automaticamente dall'interprete.
 ]
 
-Inoltre è possibile costruire un tensore da un vettore numpy e viceversa
+Inoltre è possibile costruire un tensore da un array `numpy` e viceversa:
 ```py
-  np_array=np.array(data)
-  x_np = torh.from_numpy(np_array)
+import numpy as np
+data = [[1,2],[3,4]]
+np_array = np.array(data)
+x_np = torch.from_numpy(np_array)
+print(x_np)
 ```
-Il tipo di dato e la shape vengono ereditati dal vettore numpy.
-
-Riassumendo un tensore ha:
-- Shape
-- Datatype
-- Device
-
+Il vantaggio è che le prorpeità (`shape,datatype`) del vettore `numpy` vengono *ereditate* dal `tensor`, a meno che non vengano sovrascritte:
+```py
+x_ones = torch.ones_like(x_data) # [[1,1],[1,1]]
+x_rand = torch.rand_like(x_data, dtype=torch.float)
+#[[1.2,0.3],[0.23,2.3]]
+```
 #attenzione()[
-  Pythorch di default usa i `float32` di default mentre numpy usa i `float64`. Se ereditiamo da numpy ci potrebbe essere un errore di conversione, bisgona riconvertire corretamente i dati.
+  Quando si converte un vettore `numpy` ad un `tensor` ci sono due aspetti da considerare:
+  - `PyTorch` di default usa i `float32`, mentre `numpy` usa i `float64`. Se ereditassimo direttamente da `numpy` ci potrebbe essere un errore di conversione, bisgona *riconvertire* corretamente i dati.
+
+  - Un `numpy` array quando diventa un `tensor`, continua a *condividere la memoria* (puntatore alla stessa locazione di memoria). Se si effetuano dei cambiamenti sul `tensor`, influiscono anche sull'array `numpy`.
 ]
+
+=== Shape
+
+Dal punto di vista delle dimensioni un tensore si legge seguendo le parentesi ``` [[[1,2,3],[4,5,6]]]``` è un tensore tri-dimensionale, la shape è `[1,3,3]`
 
 === Operazioni
 
@@ -140,11 +148,11 @@ Quando creiamod dei tensori creiamo dei blocchi contigui.
   ```
   La matrice viene trasposta ed è per quello che non trova più la contiguita.
 
-  Il concetto di contiguità significa: "I numeri che sono vicini nella matrice (logica) sono vicini anche nella striscia di memoria RAM (fisica)? 
-  
+  Il concetto di contiguità significa: "I numeri che sono vicini nella matrice (logica) sono vicini anche nella striscia di memoria RAM (fisica)?
+
   - Matrice originale ($3 times 4$): La prima riga è `0, 1, 2, 3`. In memoria sono seduti uno accanto all'altro? Sì (Contiguo).
   - Matrice trasposta ($4 times 3$): La prima riga ora è composta dai numeri `0, 4, 8`. In memoria sono seduti vicini? No! Tra lo 0 e il 4 ci sono sedute altre persone (1, 2, 3) che appartengono ad altre righe della nuova matrice.
-  
+
   Perché view(-1) si rompe? Il comando view(-1) è "stupido": dice "Dammi tutti i dati in fila, dall'inizio alla fine della memoria". Se lo fai sulla trasposta, view andrebbe a leggere la memoria fisica nell'ordine originale: 0, 1, 2, 3....Ma la tua matrice trasposta logicamente dovrebbe iniziare con 0, 4, 8....C'è un disaccordo tra l'ordine fisico e quello logico. PyTorch se ne accorge e ti dice: "Non posso darti una vista piatta (view) perché se leggo la memoria di fila ti do i numeri nell'ordine sbagliato rispetto alla tua trasposta".
 ]
 
@@ -171,12 +179,12 @@ Quando creiamod dei tensori creiamo dei blocchi contigui.
 Attenzione condividono memoria. Può essere pericoloso, nel molemto in cui passo a un tensore da un numpy array e faccio operazione sul tensore allora modifico anche l'array numpy originale
 //aggiugnere esempio
 
-`unsqueexe(dim)` = aggiunge nuove dimensioni di dimensione 1 alla posizione dim. 
+`unsqueexe(dim)` = aggiunge nuove dimensioni di dimensione 1 alla posizione dim.
 `squeeze(dim)` = operazione contraria, rimuove degli $1$ dalle dimensioni
 
-La concatenazione permette di concatenare tensori diversi su una certa dimensione. 
+La concatenazione permette di concatenare tensori diversi su una certa dimensione.
 
-`torch.stack` 
+`torch.stack`
 
 
 
