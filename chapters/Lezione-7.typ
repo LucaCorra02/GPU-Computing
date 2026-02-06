@@ -55,30 +55,74 @@ x_rand = torch.rand_like(x_data, dtype=torch.float)
 
 === Shape
 
-Dal punto di vista delle dimensioni un tensore si legge seguendo le parentesi ``` [[[1,2,3],[4,5,6]]]``` è un tensore tri-dimensionale, la shape è `[1,3,3]`
-
-=== Operazioni
-
-Per quanto riguardo il calcolo matriciale ad esempio avviene con l'operatore `@`. Mentre l'operazione element-wise tra due vettor si può usare `*` come una normale moltiplicazione.
-
-//aggiugnere esempio
-Prodotto matriciale tra due tensori di batch diversi:
+La dimensione di un `tensor` si leggono dall'esterno verso l'interno. Ad esempio:
+```py
+  tensor(
+    [[
+      [1,2,3],
+      [4,5,6],
+      [7,8,9]
+    ]]
+  )
+  torch.size([1,3,3]) # dim 0,1,2
 ```
-  a = torch.randn(2,4,5,4)
-  b = torch.randn(2,1,4,3)
-```
+In questo caso è un tensore 3D, c'è una dimensione $3*3$.
 
-Le prime due dimensioni prendono il nome di batch $(2,4)$ e $(2,1)$ il cuore di questi due batch sono delle matrici di dimensioni $(5,4)$ e $(4,3)$. Le dimensioni dei batch non sono compatibili, faciamo *broadcasting*. Mentre la terza e la quarta dimensione sono il risultato di un prodotto matriciale.
-```
-a = torch.randn(2,4,5,4) #[B1, B2, 5, 4]
-b = torch.randn(2,1,4,3) #[B1, 1, 4, 3]
+== Operazioni
 
-x = torch.matmul(a,b)#[]
-```
-//aggiungere immagine
-In questo prodotto avviene la replicazione, il missmatch viene coperto dal boradcasting. Ovvero replico la struttura dati con struttura minore tante volte quanto serve per arrivare alla dimensione dell'altro operando.
+Di default le operazioni tra tensori possono essere eseguite sia sulla `CPU` che sulla `GPU`, generalmente i tensori vengono allocati inizialmente sulla `CPU`.
 
-il matmul fissa le dimensioni `[...,n,m]*[...,n,m]`. Il batch finale avrà una dimensione $2,4$ mentre sulle due dimensioni avviene il prodotto matriciale così come lo conosciamo. La shape finale di `c.shape== (2,4,5,3)`.
+Esistono inoltre degli operatori caricati, ad esempio:
+- `@`: utilizzato per *operazioni di algebra lineare*, come il prodotto matriciale
+- `*`: utilizzato per *element-wise product*, ad esempio prodotto degli elementi cella per cella di un vettore
+
+=== Broadcasting
+
+Si tratta di un'operazione fatta in automatico da `PyTorch` quando i *batch* (prime due dimensioni) di due tensori non corrispondono:
+```py
+a = torch.randn(2, 4, 5, 4) # [B1, B2, 5, 4]
+b = torch.randn(2, 1, 4, 3) # [B1, 1, 4, 3]
+c = torch.matmul(a, b)
+print("Shape of c:", c.shape) # [2, 4, 5, 3]
+```
+Nell'esempio la dimensione dei batch di $a$ e $b$ non corrispondono, in particolare:
+- $a "batch"(2,4)$
+- $b "batch"(2,1)$
+#figure(
+  image("../assets/broadcasting.png", width: 65%),
+  caption: [
+    Rappresentazione dei tensori $a$ e $b$ (input)
+  ],
+)
+Siccome le dimensioni dei batch non corrispondono viene fatto *broadcasting* (in modo implicito). Il tensore con dimensione minore viene espanso tante volte quanto serve per arrivare alla dimensione dell'operando più grande, in modo da croprire così il missmatch.\
+Nell'esempio sorpa il la seconda dimensione del batch del tenosore $b$ viene posta a $4$. Il tensore $c$ risultante avrà una `c.shape == (2, 4, 5, 3)`, dove:
+- $2 ->$ batch esterno
+- $4 ->$ gruppo interno del batch
+- $5 ->$ numero di righe per ogni matrice
+- $3 ->$ numero di colonne per ogni matrice
+
+#figure(
+  image("../assets/broadcasting-result.png", width: 65%),
+  caption: [
+    Rappresentazione dei tensori $a$ e $b$ (input)
+  ],
+)
+
+#attenzione()[
+  Non tutte le forme di tensori sono compatibili. Affinché il broadcasting funzioni, `PyTorch` confronta le dimensioni dei due tensori partendo da *destra verso sinistra* (dall'ultima dimensione alla prima). Due dimensioni sono *compatibili* se:
+  - Sono uguali
+  - Una delle due è $1$.
+
+  Se un tensore ha meno dimensioni dell'altro, `PyTorch` aggiunge virtualmente delle dimensioni $1$ a sinistra.
+]
+
+
+
+
+
+
+
+
 
 //aggiungere esempio broadcasting con somma
 
