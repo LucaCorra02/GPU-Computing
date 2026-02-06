@@ -238,27 +238,47 @@ Nell'esempio sorpa il la seconda dimensione del batch del tenosore $b$ viene pos
 ]
 
 
-=== Torch ensum
+=== Torch Einsum
 
+Si tratta di una notazione per effetuare in modo coinciso operazioni compoment-wise. `torch.einsum` prende come argomento una stringa che descrive:
+- l'operazione che si vuole effettuare
+- i tensori su cui si deve operare
+- il tensore risultato
 
-
-
-
-
-
-Un modo coinciso per fare compoment-wise product è `torch.ensum`. Prende come parametro una stringa sche descrive cosa deve essere moltiplicato e le operazioni:
-#esempio()[
-  ```
-    A = torch.randn(2,3)
-    B = torch.rand(3,4)
-    C = torch.einsum(ik,kj->ij) # Dove k è la dimensione comune, sommiamo lungo k
-  ```
-  //aggiungere mapping formula
-
-  - Nel caso di prodotto matrice bvettor è `ij,j -> i`
-  - Nel caso di prodotto element-wise è `i,j,i,j->i,j`
-  - Nel caso di matrice a più dimensioni otteniamo: `nij,njk -> nik`. Vado a moltiplicare solamente una dimensione delle matrici, scelgo una dimensione e moltiplico lungo quel asse i vettori.
+#nota()[
+  L'operazione viene eseguita su tutti gli indici che non appaiono tra gli indici del risultato.
 ]
+
+*Prodotto tra matrici*: Date due matrici $P "e" Q$ il prodotto:
+$
+  M_(i,k) = sum_j P_(i,j)Q_(j,k)
+$
+può essere scritta come `M = torch.einsum('ij,jk->ik', P, Q)`
+
+*Prodotto matrice vettore*: Dato un vettore $M$ e $v$:
+$
+  w_i = sum_j M_(i,j)v_j
+$
+può essere scritta come `torch.einsum("ij,j->i", M, v)`
+
+*Prodotto element-wise*: Date due matrici $P "e" Q$:
+$
+  M_(i,j) = P_(i,j)*Q_(i,j)
+$
+può essere scritta come `torch.einsum("ij,ij->ij", P, Q)`
+
+*Prodotto Matriciale a batch*: Dati due tensori $3D$ $P "e" Q$:
+$
+  M_(n,i,k) = sum_j (P_(n,i,j)Q_(n,j,k))
+$
+può essere scritta come `torch.einsum("nij,njk->nijk", P, Q)`
+
+=== Media e Deviazione
+
+
+
+
+
 
 La mean e la std di un immagine. In questo caso sto facendo la STD sul 3 ovvero il numero di canali, la media per il rosso, blue e verde `x.mean(dim=(0,2,3))`
 
