@@ -76,6 +76,11 @@ Esistono inoltre degli operatori caricati, ad esempio:
 - `@`: utilizzato per *operazioni di algebra lineare*, come il prodotto matriciale
 - `*`: utilizzato per *element-wise product*, ad esempio prodotto degli elementi cella per cella di un vettore
 
+#attenzione()[
+  La scrittura `tensor.add_(5)` serve per le operazioni *in place*. Esse modificano il tensore in maniera diretta.
+]
+
+
 === Broadcasting
 
 Si tratta di un'operazione fatta in automatico da `PyTorch` quando i *batch* (prime due dimensioni) di due tensori non corrispondono:
@@ -253,7 +258,7 @@ Si tratta di una notazione per effetuare in modo coinciso operazioni compoment-w
 $
   M_(i,k) = sum_j P_(i,j)Q_(j,k)
 $
-può essere scritta come `M = torch.einsum('ij,jk->ik', P, Q)`
+può essere scritta come `torch.einsum('ij,jk->ik', P, Q)`
 
 *Prodotto matrice vettore*: Dato un vettore $M$ e $v$:
 $
@@ -271,41 +276,79 @@ può essere scritta come `torch.einsum("ij,ij->ij", P, Q)`
 $
   M_(n,i,k) = sum_j (P_(n,i,j)Q_(n,j,k))
 $
-può essere scritta come `torch.einsum("nij,njk->nijk", P, Q)`
+può essere scritta come `torch.einsum("nij,njk->nik", P, Q)`
 
 === Media e Deviazione
 
+Calcolare la media e la deviazione standard sui tensori è molto comune. In particolare, vengono utilizzate per eseguire data normalization e batch normalization nei modelli di deep learning. Le funzioni sono due:
+- `torch.mean()`
+- `torch.std()`
+In entrambe le funzioni è possibile specificare su quali dimensioni del tensore non si vuole fare la media.
 
+#table(
+  columns: 5,
+  [_Input_], [_Shape_], [_Media_], [_STD_], [_Risultato_],
+  [Vettore $1D$], [`[N]`], [`x.mean()`], [`x.std()`], [Scalare],
+  [Matrice $2D$], [`[M,N]`], [`x.mean(dim=0 or dim=1)`], [`x.std(dim=0 or dim=1)`], [Media per riga o colonna],
+  [Batch immagine], [`[B,3,H,W]`], [`x.mean(0,2,3)`], [`x.std(0,2,3)`], [Media per canale RGB],
+)
 
+== Normalizzazione dei batch
 
+Nei modelli di deep learning, la normalizzazione dei batch ha un ruolo molto fondamentale. Tale tecnina viene usata per rendere l'*addestramento* delle reti neurali *più veloce* e *più stabile*.
 
+Tale tecnica, va a risolvere il problema del $mr("internal covariate shift")$. Quando si va ad adestrare una rete neurale, i pesi del primo layer cambiano man mano, cambiando la distribuzione dei dati che arriva al secondo layer. Il secondo layer deve quindi _riadattarsi_ continuamente alla nuova distribuzione, rallentando l'apprendimento.\
 
-La mean e la std di un immagine. In questo caso sto facendo la STD sul 3 ovvero il numero di canali, la media per il rosso, blue e verde `x.mean(dim=(0,2,3))`
+La soluzione prende il nome di $mg("batch norm")$. Essa va a  normalizzare l'input di ogni layer nascosto per stabilizzare la distribuzione. Per ogni mini-batch di dati durante il training, il layer BatchNorm esegue $3$ passaggi:
 
-#attenzione()[
-  La scrittura `tensor.add_(5)` serve per le operazioni in place. Molto importante perchè sto modificando il dato su cui lavoro ma non vado ad espandere il dato di nuovo
+- Calcola la media $mu$ e la varianza $sigma^2$ del batch corrente.
+
+- *Normalizzazione*: Sottrae la media e divide per la deviazione standard (aggiungendo un numero piccolo $epsilon$ per evitare le divisione per zero):
+  $
+    hat(x) = (x - mu)/(sqrt(sigma^2+epsilon))
+  $
+  I dati del batch avranno ora media $0$ e varianza $1$
+
+- *Scale and shift*: I dati normalizzati vengono moltiplicati per un iper-parametro $gamma$ e un parametro $beta$ appreso dal modello:
+  $
+    y = gamma hat(x)+ beta
+  $
+  #nota()[
+    Se venisse forzata media $0$ e varianza $1$, potremmo limitare la capacità della rete. $gamma$ e $beta$ permettono alla rete di imparare se le serve una distribuzione diversa (o addirittura di annullare la normalizzazione se necessario).
+  ]
+
+#informalmente()[
+  I vantaggi introdotti sono due:
+  - *Velocità*: Permette di usare Learning Rate molto più alti (convergenza rapida).
+
+  - *Stabilità*: Rende la rete meno sensibile all'inizializzazione casuale dei pesi.
+
+  - *Regolarizzazione*: Introduce un leggero "rumore" (poiché le statistiche dipendono dal batch casuale), agendo come un leggero Dropout ed evitando l'overfitting.
 ]
 
-== Normalizzazione
+=== batchNorm2d
 
-La batch normalization può essere fatta attraverso :
-$(B,C,H,W)$ dove:
-- B = batch size
-- C = numero di canali
-- H,W = dimensioni spazioli
+In Pytorch `nn.BatchNorm2d` è l'implementazione del layer batch norm specifica per dati $4D$ (immagini), tipicamente usata nelle Reti Neurali Convoluzionali (CNN).
 
-Nei modelli deep i canali sono molto importanti in quanto continuano a cambiare gli embedding in spazi vettoriali di dimensione B.
+Il layer prende in input un tensore con la seguente shape $(B, C, H, W)$ dove:
+- $B$ è la batch size
+- $C$ è il numero di canali
+- $H,W$ sono le dimensioni spaziali
 
-Per ogni canale C vado a normalizzare, calcolo media e varianza su tutte le rimanenti variabili. Nella formula $c$ rimane sempre fisso:
+Il layer esegue una *channel-wise batch normalization*. Per ogni canale $c$ calcola la media e la varianza su tutte le altre dimensioni ($c$ rimane fisso):
 $
   mu_c = 1 / ("BHW") sum_(b,h,w) x_(b,c,h,w) \
-  sigma^2_c = 1 / ("BHW") sum_(b,h,w) x_(b,c,h,w) - mu_c
+  sigma^2_c = 1 / ("BHW") sum_(b,h,w) (x_(b,c,h,w) - mu_c)^2
 $
-Il valore vinale è che ho cambiato il valore del dato $x$ da $hat(x)$. $epsilon$ è un numero molto piccolo per rimanere sopra 0 (?):
+
+#nota()[
+  I canali $C$ rappresentano le features estratte (embedding). La BatchNorm normalizza ogni feature indipendentemente dalle altre, ma coerentemente su tutto il batch $B$ e su tutta l'immagine spaziale.
+]
+
+Successivamente viene applicata la normalizzazione al batch:
 $
   hat(x)_(b,c,h,w) = (x_(b,c,h,w)-mu_c)/(sqrt(sigma^2_c + epsilon))
 $
-Tutto questo lo fa il moduli `batchNorm2d`.
 
 == Tensor Reshaping
 
