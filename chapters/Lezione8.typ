@@ -69,7 +69,7 @@ Nell'immagine di sinistra, tutti gli input $x$ convergono in un singolo neurone 
   Se i dati del dataset, sono divisi in due categorie, dove: i blu sono al centro e i dati rossi sono intorno (come un cerchio), il classificatore lineare fallirà sempre, indipendentemente dalla funzione di attivazione in uscita, equazione della retta $x dot w + b = 0$ troppo semplice.
 ]
 
-=== Multi-Layer Perceptron (MLP)
+== Multi-Layer Perceptron (MLP)
 
 Per questo motivo si passa a dei modelli con un architettura gerarchica organizzata su livelli. I modelli MLP presentano un *architettura a strati*, dove:
 - Ogni MLP è composto da L strati, dove ogni strato presenta i propri pesi $W^l$ e $b^l$.
