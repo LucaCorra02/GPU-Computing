@@ -86,8 +86,35 @@ $
   image("/assets/image.png", width: 70%),
 )
 
-#nota()[
+Le reti neurali profonde trasformano i dati attraverso *successive mappature non lineari*:
+$
+  x -> x^1 -> x^2 -> dots -> x^L
+$
+
+Ogni livello produce una *nuova rappresentazione* dell'input:
+- *Obiettivo*: rendere il compito finale (classificazione, regressione) più facile
+- Le rappresentazioni intermedie catturano feature sempre più astratte
+- L'ultimo livello opera in uno spazio dove le classi sono (*idealmente*) linearmente separabili
+
+#informalmente()[
   Un singolo strato è solo una trasformazione lineare seguita da una non-linearità. Usare più strati permette la composizione di funzioni *non lineari*, abilitando il modello a rappresentare funzioni molto più complesse.
+]
+
+=== Embedding Space
+
+L'output di un layer nascosto definisce uno *spazio di embedding*: Un buon embedding deve avere le segunti Proprietà:
+- *Cattura la struttura* dei dati (punti simili sono vicini nello spazio)
+- *Separa le classi* (punti di classi diverse sono distanti)
+- *Semplifica le decisioni* downstream (il classificatore finale diventa più semplice)
+
+
+Ogni input $x$ viene mappato in questo spazio tramite forward propagation:
+$
+  x -> "embedding"(x) = x^l = sigma(W^l dot sigma(W^(l-1) dot (dots)))
+$
+
+#informalmente()[
+  Uno spazio di embedding ben progettato trasforma il problema originale (magari non linearmente separabile) in uno spazio dove diventa linearmente separabile o molto più semplice da risolvere.
 ]
 
 == Funzioni di Attivazione
@@ -320,6 +347,25 @@ Il vantaggio principale di avere dei *modelli profondi* (deep) rispetto ai model
 
 Il *learning* è una stima di parametri sempre più efficaci, utilizzando bias induttivi (embedding e livelli intermedi) per favorire l'apprendimento di *rappresentazioni gerarchiche* dei dati.
 
+#attenzione()[
+  Sebbene il teorema di approssimazione universale sia perfetto da un pinto di vista teorico, presenta alcune *limitazioni importanti*:
+  - *Garantisce* un basso errore di training (la rete può approssimare qualsiasi funzione continua)
+  - *Non dice nulla* sulla capacità di generalizzazione (performance su dati mai visti)
+  - Aumentare $K$ (numero di unità nascoste) migliora sempre il fit sul training set
+  - *Rischio*: *overfitting* se il modello è troppo complesso rispetto ai dati disponibili
+]
+
+=== Bilanciamento nel Training Reale
+
+Nel training reale, l'apprendimento richiede un *bilanciamento* tra due estremi:
+
+/ Underfitting (modello troppo semplice): Il modello non ha abbastanza capacità per catturare la struttura dei dati. Ha alto errore sia sul training set che sul test set.
+
+/ Overfitting (modello troppo complesso): Il modello memorizza i dati di training invece di apprendere pattern generalizzabili. Ha basso errore sul training set ma alto errore sul test set.
+
+#nota()[
+  La *profondità* (depth) della rete gioca un ruolo cruciale in questo bilanciamento. Reti più profonde hanno maggiore capacità espressiva, ma richiedono più dati e tecniche di regolarizzazione per evitare overfitting.
+]
 
 == PyTorch nn Framework
 
