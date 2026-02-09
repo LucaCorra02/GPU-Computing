@@ -48,6 +48,59 @@ $
   La ReLU restituisce $0$ quando $x < 0$ e $x$ quando $x >= 0$. Applicando una trasformazione lineare si ottiene: $R(w x + b)$ che dipende dal valore della retta $w x + b$.
 ]
 
+/*
+#figura(
+  ```python
+  import cetz.plot
+  
+  cetz.canvas({
+    import cetz.draw: *
+    
+    cetz.plot.plot(
+      size: (10, 6),
+      x-label: $x$,
+      y-label: $f(x)$,
+      x-tick-step: 1,
+      y-tick-step: 0.5,
+      x-min: -3,
+      x-max: 3,
+      y-min: -0.5,
+      y-max: 3,
+      {
+        // ReLU
+        cetz.plot.add(
+          ((x,) => (calc.max(0, x),)),
+          domain: (-3, 3),
+          samples: 100,
+          style: (stroke: (paint: mo, thickness: 2pt)),
+          label: [ReLU]
+        )
+        
+        // Tanh (per confronto)
+        cetz.plot.add(
+          ((x,) => (calc.tanh(x),)),
+          domain: (-3, 3),
+          samples: 100,
+          style: (stroke: (paint: mb, thickness: 1.5pt, dash: "dashed")),
+          label: [Tanh]
+        )
+        
+        // Sigmoid (per confronto)
+        cetz.plot.add(
+          ((x,) => (1 / (1 + calc.exp(-x)),)),
+          domain: (-3, 3),
+          samples: 100,
+          style: (stroke: (paint: mr, thickness: 1.5pt, dash: "dotted")),
+          label: [Sigmoid]
+        )
+      }
+    )
+  })
+  ```
+  caption: [Confronto tra funzioni di attivazione: ReLU (arancione), Tanh (blu tratteggiato) e Sigmoid (rosso punteggiato)]
+)
+*/
+
 ==== Teorema di Approssimazione Universale con ReLU
 
 Data una funzione continua $f in C([a,b], RR)$, è possibile *approssimala come combinazione lineare di ReLU*.
@@ -126,6 +179,54 @@ class ModelNN(nn.Module):
         return output
 
 ```
+/*
+#figura(
+  ```python
+  import fletcher as fl
+  
+  fl.diagram(
+    node-stroke: 1pt,
+    spacing: (20mm, 8mm),
+    edge-stroke: 1.5pt,
+    mark-scale: 70%,
+    {
+      let layers = (
+        (pos: (0, 0), label: [Input\n$mb(x)$], fill: mb),
+        (pos: (0, 1), label: [Linear\n$W_1 mb(x) + mb(b)_1$], fill: mo),
+        (pos: (0, 2), label: [BatchNorm], fill: mg),
+        (pos: (0, 3), label: [ReLU\n$max(0, dot)$], fill: mr),
+        (pos: (0, 4), label: [Dropout\n$p=0.5$], fill: mp),
+        (pos: (0, 5), label: [Linear\n$W_2 dot + mb(b)_2$], fill: mo),
+        (pos: (0, 6), label: [Softmax], fill: mg),
+        (pos: (0, 7), label: [Output\n$hat(mb(y))$], fill: mb),
+      )
+      
+      for (i, layer) in layers.enumerate() {
+        fl.node(
+          layer.pos, 
+          layer.label, 
+          shape: rect,
+          corner-radius: 5pt,
+          fill: gradient.linear(white, layer.fill, angle: 45deg),
+          width: 30mm,
+          height: 10mm
+        )
+        
+        if i < layers.len() - 1 {
+          fl.edge(layer.pos, layers.at(i + 1).pos, "->", stroke: 2pt)
+        }
+      }
+      
+      // Annotazioni
+      fl.node((1.5, 1.5), [Trasformazione\nlineare], stroke: none, fill: none)
+      fl.node((1.5, 3.5), [Non-linearità], stroke: none, fill: none)
+      fl.node((1.5, 4), [Regolarizzazione], stroke: none, fill: none)
+    }
+  )
+  ```
+  caption: [Architettura tipica di una rete neurale feedforward con BatchNorm, ReLU e Dropout]
+)
+*/
 === Layer Lineari (Trasformazioni Affini)
 
 Una *trasformazione lineare* in PyTorch è implementata come una *trasformazione affine*:
@@ -199,36 +300,85 @@ All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene
   L'inizializzazione dei parametri è fondamentale per il successo del training. Esiste un'intera branca di ricerca che studia come inizializzare i parametri: *da dove si parte influenza fortemente come il modello evolve* durante l'addestramento.
 ]
 
-#esempio()[
-  *Xavier Normad Error (MSE) Loss*
+== Funzioni di Loss
 
-  Calcola la *differenza quadratica* tra valori predetti e valori reali, elemento per elemento:
-  $
-    L_"MSE" = 1/N sum_(i=1)^N (y_i - hat(y)_i)^2
-  $
-]
+Le *funzioni di loss* (o funzioni di costo) quantificano l'errore tra le predizioni del modello e i valori reali. Durante il training, l'obiettivo è minimizzare questa funzione.
+
+=== Mean Squared Error (MSE) Loss
+
+Calcola la *differenza quadratica media* tra valori predetti e valori reali:
+$
+  L_"MSE" = 1/N sum_(i=1)^N (y_i - hat(y)_i)^2
+$
 
 *Proprietà*:
-- Penalizza fortemente quando gli elementi sono molto differenti tra loro (errori grandi pesano quadraticamente)
-- Sensibile agli outlier
+- Penalizza fortemente gli errori grandi (peso quadratico)
+- Molto sensibile agli *outlier*
 - Usata principalmente in problemi di *regressione*
+- Funzione *convessa*, essenziale per l'ottimizzazione
 
-=== L1 Loss (Mean Absolute Error)
+#esempio()[
+  Se $y_i = 5$ e $hat(y)_i = 3$, l'errore per questo esempio è $(5-3)^2 = 4$.
+  Se $y_i = 5$ e $hat(y)_i = 1$, l'errore diventa $(5-1)^2 = 16$ (4 volte maggiore pur avendo raddoppiato la distanza).
+]
 
-Misura la *Cross-Entropy (BCE)*
+=== Mean Absolute Error (MAE) Loss o L1 Loss
 
-La *Binary Cross-Entropy* è utilizzata per problemi di *classificazione binaria*:
+Misura la *differenza assoluta media* tra predizioni e valori reali:
+$
+  L_"MAE" = 1/N sum_(i=1)^N |y_i - hat(y)_i|
+$
+
+*Proprietà*:
+- Meno sensibile agli outlier rispetto a MSE
+- Penalizza linearmente gli errori
+- Funzione *convessa*
+- Usata in problemi di *regressione* quando si vuole robustezza agli outlier
+
+=== Binary Cross-Entropy (BCE) Loss
+
+La *Binary Cross-Entropy* è utilizzata per problemi di *classificazione binaria* ($y_i in {0,1}$):
 $
   L_"BCE" = -1/N sum_(i=1)^N [y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i)]
 $
+
+#nota()[
+  Il modello deve produrre valori $hat(y)_i in [0,1]$, tipicamente ottenuti con una funzione *Sigmoid* all'output.
+]
 
 ==== Concetto di Entropia
 
 L'*entropia* è una misura informazionale che quantifica il "tasso di sorpresa" o l'incertezza di una distribuzione di probabilità.
 
-#esempio()[Multiclasse]
+#nota()[
+  *Interpretazione*: L'entropia misura quanto è "caotica" una distribuzione.
+  - *Alta entropia*: distribuzione uniforme (massima incertezza)
+  - *Bassa entropia*: distribuzione concentrata su pochi valori (bassa incertezza)
+]
 
-Nella *classificazione multiclasse* (più di 2 classi), il modello produce diversi valori (chiamati *logits*) in uscita, uno per ogni classe. Per convertirli in probabilità e calcolare la loss, usiamo *Softmax* e *Negative Log-Likelihood*.
+#esempio()[
+  Consideriamo la distribuzione delle lettere in un testo italiano:
+  - Se tutte le lettere hanno la stessa probabilità $P = 1/21$: *alta entropia* (massima sorpresa)
+  - Se alcune lettere sono molto frequenti (es. 'e', 'a', 'i'): *bassa entropia* (minore sorpresa)
+
+  Quando leggiamo una parola lettera per lettera, l'entropia quantifica la nostra "sorpresa" nel vedere la lettera successiva.
+]
+
+==== Funzionamento della BCE
+
+Nella BCE per classificazione binaria:
+- Quando $y_i = 1$ (label vera): vogliamo $hat(y)_i approx 1$, quindi minimizziamo $-log hat(y)_i$
+- Quando $y_i = 0$ (label vera): vogliamo $hat(y)_i approx 0$, quindi minimizziamo $-log(1 - hat(y)_i)$
+
+La loss *penalizza fortemente* predizioni sbagliate con alta confidenza.
+
+== Classificazione Multiclasse
+
+Nella *classificazione multiclasse* (più di 2 classi), il modello produce diversi valori (chiamati *logits*) in uscita, uno per ogni classe $k in {1, 2, dots, K}$.
+
+#nota()[
+  I *logits* sono valori reali arbitrari (non normalizzati) prodotti dall'ultimo layer lineare del modello. Per convertirli in probabilità valide, applichiamo la funzione *Softmax*.
+]
 
 === Softmax
 
@@ -237,13 +387,29 @@ $
   "softmax"(z_i) = (e^(z_i))/(sum_(j=1)^K e^(z_j))
 $
 
-dove $K$ è il numero di classi.
+dove $K$ è il numero di classi e $z_i$ è il logit per la classe $i$.
 
 #nota()[
   La Softmax garantisce che:
   - Ogni output sia $in [0,1]$
-  - La somma di tutte le probabilità sia uguale a $1$
+  - La somma di tutte le probabilità sia uguale a $1$: $sum_(i=1)^K "softmax"(z_i) = 1$
   - Ogni valore rappresenta $P(y = k | x)$, la probabilità che $x$ appartenga alla classe $k$
+  - I logits più alti producono probabilità maggiori (enfasi esponenziale)
+]
+
+#esempio()[
+  Dato un vettore di logits per 3 classi: $z = [2.0, 1.0, 0.1]$
+
+  Calcolo Softmax:
+  - $e^(2.0) approx 7.39$
+  - $e^(1.0) approx 2.72$
+  - $e^(0.1) approx 1.11$
+  - Somma: $7.39 + 2.72 + 1.11 = 11.22$
+
+  Probabilità:
+  - $P(y=1|x) = 7.39/11.22 approx 0.66$
+  - $P(y=2|x) = 2.72/11.22 approx 0.24$
+  - $P(y=3|x) = 1.11/11.22 approx 0.10$
 ]
 
 === Verosimiglianza e Log-Likelihood
@@ -252,130 +418,597 @@ Dato un dataset $D = {(x_i, y_i)}_(i=1)^N$ con label $y_i$ e input $x_i$, consid
 
 ==== Caso Binario (Richiamo)
 
-Per un problema binario $y_i in {0, 1}$ con modello $theta in [0,1]$, la *verosimiglianza* (likelihood) è:
+Per un problema binario $y_i in {0, 1}$ con modello parametrizzato da $theta$ che produce $hat(y)_i = M_theta (x_i) in [0,1]$, la *verosimiglianza* (likelihood) del dataset $D$ dato il modello è:
 $
   P(D | theta) = product_(i=1)^N hat(y)_i^(y_i) (1-hat(y)_i)^(1-y_i)
 $
 
 #nota()[
-  La probabilità è molto alta quando il modello predice correttamente tutti gli esempi.
+  *Interpretazione*:
+  - Quando $y_i = 1$: contributo $hat(y)_i$ (vogliamo $hat(y)_i$ vicino a 1)
+  - Quando $y_i = 0$: contributo $(1-hat(y)_i)$ (vogliamo $hat(y)_i$ vicino a 0)
+  - La verosimiglianza è alta quando il modello predice correttamente tutti gli esempi
 ]
 
-Usiamo la *log-likelihood* perché:
-- La produttoria diventa somma (più stabile numericamente)
-- Evitiamo problemi di underflow con $N$ grande
-- È più facile da ottimizzare
+==== Perché usiamo la Log-Likelihood?
 
+Usiamo la *log-likelihood* per diversi motivi pratici e numerici:
+
++ *Stabilità numerica*: La produttoria diventa somma
+  $
+    log P(D | theta) = log product_(i=1)^N p_i = sum_(i=1)^N log p_i
+  $
+
++ *Evitare underflow*: Con $N$ grande, prodotto di probabilità $< 1$ tende rapidamente a 0
+
++ *Ottimizzazione più semplice*: Derivate della somma sono più facili da calcolare
+
++ *Interpretazione additiva*: Contributi indipendenti di ogni esempio
+
+#esempio()[
+  *Senza log*: $0.9 times 0.8 times 0.7 times dots times 0.6$ con 100 termini $->$ underflow
+
+  *Con log*: $log 0.9 + log 0.8 + log 0.7 + dots + log 0.6$ $->$ stabile
+]
+
+La log-likelihood per il caso binario diventa:
 $
   log P(D | theta) = sum_(i=1)^N [y_i log hat(y)_i + (1-y_i) log(1-hat(y)_i)]
 $
 
 ==== Caso Multiclasse
 
-Per la classificazione multiclasse con $y_i in {1, 2, dots, K}$, la *log-likelihood* diventa:
+Per la classificazione multiclasse con $y_i in {1, 2, dots, K}$, il modello produce un vettore di probabilità $hat(mb(y))_i = (hat(y)_(i,1), hat(y)_(i,2), dots, hat(y)_(i,K))$ dove $hat(y)_(i,k) = P(y_i = k | x_i)$.
+
+La *verosimiglianza* diventa:
 $
-  log P(D | theta) = sum_(i=1)^N log p(y_i | x_i)
+  P(D | theta) = product_(i=1)^N P(y_i | x_i) = product_(i=1)^N hat(y)_(i,y_i)
+$
+
+Dove $hat(y)_(i,y_i)$ indica la probabilità assegnata alla classe corretta per l'esempio $i$-esimo.
+
+La *log-likelihood* diventa:
+$
+  log P(D | theta) = sum_(i=1)^N log P(y_i | x_i) = sum_(i=1)^N log hat(y)_(i,y_i)
 $
 
 === Cross-Entropy Loss per Classificazione Multiclasse
 
-La *Cross-Entropy Loss* è definita come la *Negative Log-Likelihood*:
+La *Cross-Entropy Loss* (o *Categorical Cross-Entropy*) è definita come la *Negative Log-Likelihood* normalizzata:
 $
-  L_"CE" = -1/N sum_(i=1)^N log p(y_i | x_i) = -1/N sum_(i=1)^N log hat(y)_(i,j)
+  L_"CE" = -1/N sum_(i=1)^N log P(y_i | x_i) = -1/N sum_(i=1)^N log hat(y)_(i,y_i)
 $
 
-dove $j$ è l'indice della classe corretta per l'esempio $i$-esimo.
+dove $y_i in {1, 2, dots, K}$ è l'indice della classe corretta per l'esempio $i$-esimo e $hat(y)_(i,y_i)$ è la probabilità predetta per quella classe.
+
+#nota()[
+  *Minimizzare la Cross-Entropy* equivale a *massimizzare la log-likelihood*:
+  $
+    min_theta L_"CE" equiv max_theta log P(D | theta)
+  $
+
+  Cerchiamo quindi i parametri $theta^*$ che meglio spiegano il dataset $D$, considerando i bias induttivi dell'architettura scelta.
+]
 
 ==== One-Hot Encoding
 
-Le label $y_i in {1, 2, dots, K}$ vengono rappresentate in *one-hot encoding*:
-- Un vettore di dimensione $K$ con tutti $0$ tranne un $1$ in posizione $j$ (classe corretta)
-- Esempio: per $K=3$ e classe $2$: $y = [0, 1, 0]$
+Le label $y_i in {1, 2, dots, K}$ vengono spesso rappresentate in *one-hot encoding* per facilitare il calcolo:
+- Un vettore $mb(y)_i in RR^K$ con tutti $0$ tranne un $1$ in posizione $y_i$ (classe corretta)
+- Esempio: per $K=3$ e classe $y_i = 2$: $mb(y)_i = [0, 1, 0]$
+
+*Formula alternativa con one-hot encoding*:
+$
+  L_"CE" = -1/N sum_(i=1)^N sum_(k=1)^K mb(y)_(i,k) log hat(y)_(i,k)
+$
+
+Dove:
+- $mb(y)_(i,k) = cases(1 "se" k = y_i, 0 "altrimenti")$
+- La somma interna seleziona automaticamente solo la classe corretta
 
 #esempio()[
-  Supponiamo $K = 3$ classi e l'esempio $i$-esimo ha label vera $j = 2$:
-  - Il modello produce: $hat(y)_i = (alpha_1, alpha_2, alpha_3)$ dopo softmax
-  - La loss considera solo: $log hat(y)_(i,2) = log alpha_2$
-  - Idealmente vogliamo $alpha_2 approx 1$ e $alpha_1, alpha_3 approx 0$
+  Supponiamo $K = 3$ classi e l'esempio $i$-esimo ha label vera $y_i = 2$:
+
+  *One-hot encoding*: $mb(y)_i = [0, 1, 0]$
+
+  *Output Softmax*: $hat(mb(y))_i = [0.1, 0.7, 0.2]$ (dopo normalizzazione)
+
+  *Calcolo loss*:
+  $
+    L_i = -(0 times log 0.1 + 1 times log 0.7 + 0 times log 0.2) = -log 0.7 approx 0.357
+  $
+
+  La loss considera solo: $-log hat(y)_(i,2) = -log 0.7$
+
+  *Obiettivo*: vogliamo $hat(y)_(i,2) approx 1$ e $hat(y)_(i,1), hat(y)_(i,3) approx 0$
 ]
 
 #nota()[
-  Il *one-hot encoding* agisce come una *maschera* che seleziona solo la probabilità predetta per la classe corretta $j$. La log-likelihood tiene conto solo del valore $hat(y)_(i,j)$ dove $j$ è la classe vera dell'esempio $i$-esimo.
+  Il *one-hot encoding* agisce come una *maschera* che seleziona solo la probabilità predetta per la classe corretta. Questa rappresentazione:
+  - Facilita il calcolo dei gradienti durante il backpropagation
+  - Rende uniforme il trattamento di tutte le classi
+  - Permette un'implementazione vettoriale efficiente
 ]
 
 #attenzione()[
-  *Obiettivo*: vogliamo trovare il miglior $theta$ (parametri del modello) che massimizza la log-likelihood (o equivalentemente minimizza la negative log-likelihood). Questo corrisponde a trovare il modello che spiega meglio il dataset $D$, tenendo conto dei bias induttivi che abbiamo introdotto nell'architettura.
+  *Obiettivo finale del training*:
+
+  Vogliamo trovare i parametri ottimali $theta^*$ che:
+  $
+    theta^* = arg max_theta log P(D | theta) equiv arg min_theta L_"CE"
+  $
+
+  Questo corrisponde a trovare il modello che:
+  - *Spiega meglio* il dataset $D$ osservato
+  - Sfrutta i *bias induttivi* introdotti nell'architettura (layer, attivazioni, profondità)
+  - *Generalizza* bene su dati non visti (validation/test set)
 ]
-nn.linear(784,128)
-nn.ReLu()
-nn.linear(128,10)
-compatibili, output matcha con input
 
+== Training e Ottimizzazione
 
-Alla x  vengono applicati in sequena i layer che ho definito.
+=== Inizializzazione dei Pesi
 
-=== Inizializzazione dei pesi
+All'inizio del training, i *parametri del modello* (pesi e bias) devono essere inizializzati. L'inizializzazione è *fondamentale* per il successo dell'addestramento.
 
-All'inizio la matrice dei pesi (che dovrà essere imparata) è inizializzata casualmente. Esiste una branca che studia come inizializzare i parametri, da dove si parte dipende poi come il modello evolve.
-`nn.init.xavier_normal(layer.weight)` permette di creare una matrice inizializzata secondo una certa distribuzione.
+#attenzione()[
+  Una cattiva inizializzazione può:
+  - Far convergere il modello a minimi locali subottimali
+  - Causare *vanishing/exploding gradients*
+  - Rallentare significativamente il training
+  - Impedire completamente l'apprendimento
+]
 
-//guardare image classifier
+==== Strategie di Inizializzazione
 
-Funzioni di loss.
+*Inizializzazione casuale semplice*: Non consigliata!
+- Valori troppo grandi: gradienti esplodono
+- Valori troppo piccoli: gradienti svaniscono
+- Tutti uguali (es. zero): simmetria non rotta, neuroni imparano la stessa cosa
 
-=== Mean Square loss
-Calcola la differenza quadratica elemento ad elemento.
-$
-  L_"MSE" = 1/N sum_(i=1)^N (y_i-hat(y)_i)^2
-$
-Pensalizza se gli elementi sono molto differenti tra di loro.
+*Inizializzazioni avanzate*:
 
-=== L1Loss
-Misura la differenza media assoluta. più sensible agli outlier. Usata in regressione.
+#esempio()[
+  *Xavier/Glorot Initialization* (per tanh, sigmoid):
+
+  I pesi di un layer con $n_"in"$ input e $n_"out"$ output sono inizializzati da:
+  $
+    W tilde cal(N)(0, sigma^2) "dove" sigma = sqrt(2/(n_"in" + n_"out"))
+  $
+
+  In PyTorch:
+  ```python
+  nn.init.xavier_normal_(layer.weight)
+  # oppure uniforme:
+  nn.init.xavier_uniform_(layer.weight)
+  ```
+]
+
+#esempio()[
+  *He Initialization* (per ReLU e varianti):
+
+  Ottimizzata per funzioni di attivazione ReLU:
+  $
+    W tilde cal(N)(0, sigma^2) "dove" sigma = sqrt(2/n_"in")
+  $
+
+  In PyTorch:
+  ```python
+  nn.init.kaiming_normal_(layer.weight, mode='fan_in', nonlinearity='relu')
+  ```
+]
 
 #nota()[
-  Son funzioni entrambe convesse, essenziali per la minimiazzaione.
+  *Perché queste inizializzazioni funzionano?*
+
+  Mantengono la *varianza delle attivazioni* e dei *gradienti* costante attraverso i layer:
+  - Evitano il vanishing gradient (segnale troppo piccolo)
+  - Evitano l'exploding gradient (segnale troppo grande)
+  - Permettono un flusso stabile di informazione avanti e indietro
 ]
 
-=== Binary cross-entropy
-$
-  L_"BCE" = - 1/N sum_(i=1)^N [y_i log(hat(y)_i)+(1-y_i)log(1-hat(y)_i)]
-$
-L'entropia misura il tasso di sopresa. Se prendiamo un enciclopedia qual'è la probabilità di ogni singola lettera dell'alfabeto. Per una sorgente come l'enciclipedia misura come sono distrubite le lettere, quando lego una parola lettera per lettera è la sopresa nel leggere la prossima.
-Ci dice quanto una distibuzione di probabilità abbia più o meno caos. Date due distribuzioni di probabilità $P_i$ e $P_j$. Quando ho $P_j = 1/k$ con $k$ numero simboli ho il massimo del caos.
+==== Inizializzazione dei Bias
 
-In questo caso ho un classificatore binario $0 "e" 1$. Chidiamo al modello di sputare fuori un valore che sia in [0,1]. Idialmente il modello restituisce il modello restituisce a 0 quando la pool label è molto vicina a 0.
+I bias sono tipicamente inizializzati a *zero*:
+```python
+nn.init.zeros_(layer.bias)
+```
 
-Per ongi elemento del dataset $i$, se la verità è $0$ la prima parte viene cancellata e vale la seconda. Quando la verità è $1$ la seconda parte della formula viene persa. La loss penalizza gli errori in base alla label che mi interessa (concetto entropico).
+In alcuni casi specifici:
+- LSTM/GRU: bias dei gate di forget inizializzati a 1
+- Output layer: bias può essere inizializzato in base alle frequenze delle classi
 
-== Classificazione multi classe
+=== Processo di Training
 
-Se facessi classificazione multiclasse e non binaria ho parecchi valori (logits) usciti dal modello. Applico il softmax e applico la negative log-likehood.
+Il processo di training di una rete neurale segue questi passi:
 
-Per ogni valore sputa una distribuzione di probabilità ognunga per ogni classe che abbiamo, ognuna rappresenta la probabilità che $x$ appartenga alla classe $k$.
++ *Forward pass*: calcolo delle predizioni attraverso i layer
+  $
+    hat(mb(y)) = f(mb(x); theta)
+  $
 
-I logits sono dei valori a caso. Per riportarli nelle probabilità uso la funzione softmax
++ *Calcolo della loss*: valutazione dell'errore
+  $
+    L = L(hat(mb(y)), mb(y))
+  $
 
-Soft max restitusice una somma di probabilità con somma 1. Se prendo un dataset $D=[(x_i,y_i)]_(i=1)^n$ con label $y_i$ e dato $x_i$. Se prendo un modello $overline(y_i) = theta(M_(theta(x_i)))$ se è binario $y_i = in {0,1}$ allora il modello $theta$ appartiene a [0,1].
++ *Backward pass*: calcolo dei gradienti tramite backpropagation
+  $
+    nabla_theta L
+  $
 
-la verosimiglianza del modello è data da:
-$
-  P(D| theta) = product overline(y_i)^(1-overline(y_i))^(1-y_i)
-$
-La probabità è molto alta quando azzecco tutto. Di solito si usa la log-likehood la produttoria si trasforma in somma (produttoria molto brutta se N è molto grande non sforo rappresentazione e se ho molte predizioni sbagliate è un problema):
-$
-  log(P(..)) = sum_(i=1)^N y_i log overline(y_i) ...
-$
-Io voglio il miglior $theta$ che spiega in modo migliroe il dataset $D$ (applicando bias). Otteniamo così il miglir mdoello ovvero il miglior theta per D.
++ *Aggiornamento parametri*: ottimizzazione (es. SGD, Adam)
+  $
+    theta <- theta - eta nabla_theta L
+  $
 
-//aggiugnere formula softmax
-Nella softmax vado a definire la cross-entropy loss:
+/*
+#figura(
+  ```python
+  import fletcher as fl
+  
+  fl.diagram(
+    node-stroke: 1pt,
+    node-fill: gradient.linear(..mo.colors),
+    spacing: (15mm, 10mm),
+    edge-stroke: 1pt,
+    {
+      let (input, forward, loss, backward, update, output) = ((0,0), (1,0), (2,0), (2,1), (1,1), (0,1))
+      
+      fl.node(input, [Input \ $mb(x), mb(y)$], corner-radius: 5pt, extrude: (0, 3))
+      fl.node(forward, [Forward \ Pass], corner-radius: 5pt)
+      fl.node(loss, [Loss \ $L$], corner-radius: 5pt, fill: mr)
+      fl.node(backward, [Backward \ Pass], corner-radius: 5pt)
+      fl.node(update, [Update \ $theta$], corner-radius: 5pt, fill: mg)
+      
+      fl.edge(input, forward, "->", [Batch])
+      fl.edge(forward, loss, "->", [$hat(mb(y))$])
+      fl.edge(loss, backward, "->", [Gradiente])
+      fl.edge(backward, update, "->", [$nabla_theta L$])
+      fl.edge(update, forward, "->", [Parametri\naggiornati], label-pos: 0.3)
+    }
+  )
+  ```
+  caption: [Ciclo di training di una rete neurale: forward pass, calcolo loss, backward pass, aggiornamento parametri]
+)
+*/
+#nota()[
+  PyTorch automatizza il calcolo dei gradienti (punto 3) tramite *autograd*, permettendo di concentrarsi sulla definizione del modello e della loss.
+]
+
+=== Ottimizzatori
+
+Gli *ottimizzatori* implementano algoritmi per aggiornare i parametri $theta$ in base ai gradienti calcolati.
+
+==== Stochastic Gradient Descent (SGD)
+
+L'ottimizzatore più semplice:
 $
-  L = -1/N ....
+  theta_(t+1) = theta_t - eta nabla_theta L(theta_t)
 $
-Adesso ho che $y_i = {1,2,dots,K}$ dove $K$ è il numero di classi. la mia log-likehood diventa:
+
+dove $eta$ è il *learning rate*.
+
+```python
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+```
+
+*Variante con momentum*:
 $
-  P(D | theta) = -1/N sum_(k=1)^N log p(y_k | x_k) = -1/N sum_(k=1)^N log(y).
+      v_(t+1) & = gamma v_t + eta nabla_theta L(theta_t) \
+  theta_(t+1) & = theta_t - v_(t+1)
 $
-i k valori che devo rappresentare li esprimo in one hote encoding (solo un 1 in posizione $j$). facendo $log overline(y)_(i,j)$ selezione solo quello di indice $j$. La maschera seleziona solo la classe $j$ e cstruisco una log-likehood che tiene conto del fatto che per l'esemplare $i$-esimo sto considerando la $j$-esima classe che mi da il valore.\
-$overline(y)$ è grande come $y_i$ e $overline(y)_i = (alpha, .. alpha_k)$ è la somma di k valori dove si spera che a spiccare sia quello di posto $j$ ovvero la classe corretta.
+
+```python
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+```
+
+#nota()[
+  Il *momentum* aiuta ad accelerare la convergenza e superare minimi locali accumulando una "velocità" nella direzione dei gradienti passati.
+]
+
+==== Adam (Adaptive Moment Estimation)
+
+Uno degli ottimizzatori più usati, combina:
+- *Momentum*: media mobile dei gradienti
+- *RMSprop*: adatta il learning rate per ogni parametro
+
+```python
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
+```
+
+*Vantaggi di Adam*:
+- Convergenza veloce
+- Poco sensibile alla scelta del learning rate iniziale
+- Adatta automaticamente il learning rate per ogni parametro
+- Funziona bene nella maggior parte dei casi
+
+#esempio()[
+  *Setup tipico per training*:
+  ```python
+  model = MyModel()
+  criterion = nn.CrossEntropyLoss()
+  optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+  for epoch in range(num_epochs):
+      for batch_x, batch_y in dataloader:
+          # Forward pass
+          outputs = model(batch_x)
+          loss = criterion(outputs, batch_y)
+
+          # Backward pass
+          optimizer.zero_grad()  # Reset gradienti
+          loss.backward()        # Calcolo gradienti
+          optimizer.step()       # Aggiornamento parametri
+  ```
+]
+
+==== Altri Ottimizzatori
+
+*AdamW*: Variante di Adam con weight decay corretto
+```python
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
+```
+
+*RMSprop*: Adatta il learning rate usando media mobile dei gradienti al quadrato
+```python
+optimizer = torch.optim.RMSprop(model.parameters(), lr=0.01)
+```
+
+#attenzione()[
+  *Scelta dell'ottimizzatore*:
+  - *Adam/AdamW*: scelta sicura per la maggior parte dei problemi
+  - *SGD con momentum*: può generalizzare meglio con tuning accurato
+  - *RMSprop*: buono per RNN e problemi con gradienti variabili
+]
+
+=== Learning Rate e Scheduling
+
+Il *learning rate* $eta$ è uno degli iperparametri più importanti:
+- Troppo alto: divergenza, oscillazioni
+- Troppo basso: convergenza lenta, minimi locali
+
+==== Learning Rate Scheduling
+
+Modificare il learning rate durante il training:
+
+*Step Decay*: Riduce $eta$ ogni $N$ epoche
+```python
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+```
+
+*Cosine Annealing*: Riduce $eta$ seguendo una curva coseno
+```python
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
+```
+
+*ReduceLROnPlateau*: Riduce $eta$ quando la loss smette di migliorare
+```python
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
+                                                        factor=0.5, patience=5)
+```
+
+#esempio()[
+  *Uso dello scheduler*:
+  ```python
+  for epoch in range(num_epochs):
+      train_one_epoch(model, optimizer, criterion, train_loader)
+      val_loss = validate(model, criterion, val_loader)
+
+      # Aggiorna learning rate
+      scheduler.step(val_loss)  # per ReduceLROnPlateau
+      # oppure scheduler.step() per altri scheduler
+  ```
+]
+
+== Regolarizzazione e Prevenzione dell'Overfitting
+
+Le tecniche di *regolarizzazione* aiutano il modello a *generalizzare* meglio su dati non visti, prevenendo l'*overfitting*.
+
+=== Weight Decay (L2 Regularization)
+
+Aggiunge un termine di penalizzazione alla loss per limitare la magnitudine dei pesi:
+$
+  L_"total" = L_"task" + lambda/2 sum_i theta_i^2
+$
+
+dove $lambda$ è il *coefficiente di regolarizzazione*.
+
+```python
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)
+```
+
+#nota()[
+  *Effetto*: pesi più piccoli rendono il modello meno sensibile a piccole variazioni nell'input, migliorando la generalizzazione.
+]
+
+=== Dropout
+
+Durante il training, *disattiva casualmente* una frazione $p$ di neuroni:
+- Ogni neurone ha probabilità $p$ di essere "spento" (output = 0)
+- A ogni iterazione, diversi neuroni sono attivi
+- Durante l'inferenza, tutti i neuroni sono attivi (con scaling)
+
+/*
+```python
+class ModelWithDropout(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(784, 256)
+        self.dropout1 = nn.Dropout(p=0.5)  # 50% dropout
+        self.fc2 = nn.Linear(256, 128)
+        self.dropout2 = nn.Dropout(p=0.3)  # 30% dropout
+        self.fc3 = nn.Linear(128, 10)
+    
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.dropout1(x)  # Applicato solo in training
+        x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
+        return self.fc3(x)
+```
+*/
+
+#nota()[
+  *Perché funziona?*
+  - Impedisce ai neuroni di co-adattarsi troppo
+  - Equivale a fare ensemble di tante reti diverse
+  - Riduce l'overfitting forzando ridondanza
+]
+
+#attenzione()[
+  Ricordarsi di mettere il modello in modalità corretta:
+  ```python
+  model.train()  # Training: dropout attivo
+  model.eval()   # Inferenza: dropout disattivo
+  ```
+]
+
+=== Batch Normalization
+
+Normalizza le attivazioni di ogni layer durante il training:
+$
+  hat(x) = (x - mu_cal(B))/sqrt(sigma_cal(B)^2 + epsilon)
+$
+
+dove $mu_cal(B)$ e $sigma_cal(B)$ sono media e varianza del batch.
+
+```python
+class ModelWithBatchNorm(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(784, 256)
+        self.bn1 = nn.BatchNorm1d(256)
+        self.fc2 = nn.Linear(256, 128)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.fc3 = nn.Linear(128, 10)
+    
+    def forward(self, x):
+        x = self.bn1(F.relu(self.fc1(x)))
+        x = self.bn2(F.relu(self.fc2(x)))
+        return self.fc3(x)
+```
+
+*Vantaggi*:
+- Permette learning rate più alti
+- Riduce la dipendenza dall'inizializzazione
+- Ha effetto regolarizzante
+- Accelera la convergenza
+
+#nota()[
+  *Ordine tipico dei layer*:
+  ```
+  Linear -> BatchNorm -> Activation (ReLU) -> Dropout
+  ```
+  
+  (Anche se l'ordine BatchNorm/Activation è dibattuto)
+]
+
+=== Early Stopping
+
+Interrompe il training quando la *validation loss* smette di migliorare:
+
+```python
+best_val_loss = float('inf')
+patience = 10  # Numero di epoche senza miglioramento
+patience_counter = 0
+
+for epoch in range(max_epochs):
+    train_loss = train_one_epoch(...)
+    val_loss = validate(...)
+    
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        patience_counter = 0
+        # Salva il modello migliore
+        torch.save(model.state_dict(), 'best_model.pth')
+    else:
+        patience_counter += 1
+    
+    if patience_counter >= patience:
+        print(f"Early stopping at epoch {epoch}")
+        break
+```
+
+#nota()[
+  *Previene overfitting* interrompendo prima che il modello cominci a memorizzare i dati di training.
+]
+
+=== Data Augmentation
+
+Per problemi di visione, aumenta artificialmente il dataset:
+- Rotazioni, traslazioni, flip
+- Crop casuali
+- Variazioni di colore/contrasto
+- Mixup, CutMix (tecniche più avanzate)
+
+```python
+from torchvision import transforms
+
+train_transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(10),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                        std=[0.229, 0.224, 0.225])
+])
+```
+
+== Monitoraggio e Debugging
+
+=== Metriche di Valutazione
+
+Oltre alla loss, monitoriamo metriche interpretabili:
+
+*Classificazione*:
+- *Accuracy*: percentuale di predizioni corrette
+- *Precision, Recall, F1-score*: per classi sbilanciate
+- *Confusion Matrix*: errori per classe
+
+*Regressione*:
+- *MAE, RMSE*: errori medi
+- *R²*: varianza spiegata
+
+```python
+def compute_accuracy(outputs, labels):
+    _, predictions = torch.max(outputs, dim=1)
+    correct = (predictions == labels).sum().item()
+    return correct / labels.size(0)
+```
+
+=== Curve di Apprendimento
+
+Visualizzare training e validation loss/accuracy:
+
+#nota()[
+  *Interpretazione delle curve*:
+  - *Underfitting*: train e val loss entrambe alte
+  - *Overfitting*: train loss bassa, val loss alta e crescente
+  - *Buon fit*: train e val loss entrambe basse e vicine
+]
+
+=== Problemi Comuni
+
+*Loss non diminuisce*:
+- Learning rate troppo basso o alto
+- Inizializzazione sbagliata
+- Bug nel codice (gradienti non calcolati)
+- Normalizzazione dati mancante
+
+*Loss diventa NaN*:
+- Learning rate troppo alto (gradienti esplodono)
+- Divisione per zero o log(0)
+- Overflow numerico
+
+*Overfitting*:
+- Modello troppo complesso per i dati
+- Dati di training insufficienti
+- Mancano tecniche di regolarizzazione
+
+#attenzione()[
+  *Debugging checklist*:
+  + Verifica shape dei tensori
+  + Controlla che i gradienti siano calcolati (`loss.backward()`)
+  + Verifica che l'ottimizzatore aggiorni i parametri
+  + Testa su un batch piccolo (overfit intenzionale)
+  + Visualizza le attivazioni e i gradienti
+]
