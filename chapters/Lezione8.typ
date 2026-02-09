@@ -38,15 +38,61 @@ La fase di *training* consiste nei seguenti passaggi (in loop):
   - $mb(W_h)$ e $mb(b_h)$ sono i _pesi_ ai vari livelli che il modello apprende
 ]
 
+== Classificatori lineari
 
+Per capire il significato di avere dei modelli _profondi_ (più layer nascosti), andiamo a introdurre i *classificatori lineari*.
 
+Un *classificatore lineare binario* è un modello che prende un input $x in R^D$ (vettore di dimensione $D$), lo moltiplica per dei pesi $w in R^D$ e aggiunge un bias $b in R$. Il risultato viene passato a una funzione di attivazione $mr(sigma)$:
+$
+  x -> mr(sigma)(w dot x + b)
+$
+#nota()[
+  La formula rappresenta il lavoro di un singolo neurone
+]
+Se volessimo estendere il classificatore a *un classificatore multiclass* (più classi possibili di *output*), dovremo passare da un vettore dei pesi $w$ a una matrice dei pesi $W$:
+$
+  x -> sigma(W x + b)
+$
+Dove la funzione di attivazione viene è applicata *componente per componente*.
 
+#figure(
+  image("/assets/image.png", width: 70%),
+)
 
+Nell'immagine di sinistra, tutti gli input $x$ convergono in un singolo neurone con funzione di attivazione $sigma$, producendo un singolo output. A destra, gli input si connettono a multipli neuroni output (uno per classe), ciascuno con la propria funzione di attivazione $sigma$, permettendo la classificazione in $K$ classi diverse..
 
+#attenzione()[
+  Questo tipo di architettura semplice *non* è funzionale, permette solamente di imparare relazioni lineari (o combinazioni lineari) rispetto all'input grezzo. Non è in grado di imparare caratteristiche complesse o gerarchiche.
+]
+
+#informalmente()[
+  Se i dati del dataset, sono divisi in due categorie, dove: i blu sono al centro e i dati rossi sono intorno (come un cerchio), il classificatore lineare fallirà sempre, indipendentemente dalla funzione di attivazione in uscita, equazione della retta $x dot w + b = 0$ troppo semplice.
+]
+
+=== Multi-Layer Perceptron (MLP)
+
+Per questo motivo si passa a dei modelli con un architettura gerarchica organizzata su livelli. I modelli MLP presentano un *architettura a strati*, dove:
+- Ogni MLP è composto da L strati, dove ogni strato presenta i propri pesi $W^l$ e $b^l$.
+- L'output di uno strato diventa l'output del successivo:
+$
+  x^l = sigma(W^l dot x^(l-1) + b^l)
+$
+Dove $x^0$ è l'input della rete originale. L'output della rete è dunque:
+$
+  f(x,W,b) = x^L
+$
+
+#figure(
+  image("/assets/image.png", width: 70%),
+)
+
+#nota()[
+  Un singolo strato è solo una trasformazione lineare seguita da una non-linearità. Usare più strati permette la composizione di funzioni *non lineari*, abilitando il modello a rappresentare funzioni molto più complesse.
+]
 
 == Funzioni di Attivazione
 
-I modelli di deep learning sono in grado di catturare informazioni *al di là dell'osservabile*, grazie all'uso delle funzioni di attivazione che introducono non-linearità nel modello.
+I modelli di deep learning sono in grado di catturare informazioni _al di là dell'osservabile_, grazie all'uso delle *funzioni di attivazione* che introducono non-linearità nel modello.
 
 === Caratteristiche delle Funzioni di Attivazione
 
@@ -56,20 +102,23 @@ Le *funzioni di attivazione* presentano caratteristiche specifiche:
 - La *parte centrale* rappresenta la regione di incertezza del modello
 
 #nota()[
-  Le funzioni di attivazione servono per definire *regioni non lineari* nello spazio, creando curvature che permettono di separare gruppi di dati in base alla loro categoria di appartenenza. In uno stesso spazio di embedding, creano superfici di separazione complesse.
+  Le funzioni di attivazione servono per definire *regioni non lineari* nello spazio, creando curvature che permettono di separare gruppi di dati in base alla loro categoria di appartenenza. In uno *stesso spazio di embedding*, creano superfici di separazione complesse.
 ]
 
-#esempio()[
-  *Tangente iperbolica* ($tanh$): Una delle funzioni di attivazione classiche, definita come:
-  $
-    tanh(x) = (e^x - e^(-x))/(e^x + e^(-x))
-  $
-  Ha output nel range $[-1, 1]$ con saturazione agli estremi e maggiore sensibilità al centro.
-]
+=== Tangente Iperbolica (Tanh)
+
+La *Tangente iperbolica* ($tanh$) è una delle funzioni di attivazione classiche, definita come:
+$
+  tanh(x) = (2)/(1+e^(-2x))-1
+$
+Ha output nel range $[-1, 1]$ con saturazione agli estremi (per $x$ di dimensioni elevate) e maggiore sensibilità al centro.
+
+//aggiungi grafico tanh
+
 
 === ReLU (Rectified Linear Unit)
 
-La *ReLU* è una delle funzioni di attivazione più utilizzate nel deep learning moderno. È definita come:
+La *ReLU* è una delle funzioni di attivazione più utilizzate. È definita come:
 $
   "ReLU"(x) = max(0, x)
 $
@@ -78,58 +127,7 @@ $
   La ReLU restituisce $0$ quando $x < 0$ e $x$ quando $x >= 0$. Applicando una trasformazione lineare si ottiene: $R(w x + b)$ che dipende dal valore della retta $w x + b$.
 ]
 
-/*
-#figura(
-  ```python
-  import cetz.plot
-
-  cetz.canvas({
-    import cetz.draw: *
-
-    cetz.plot.plot(
-      size: (10, 6),
-      x-label: $x$,
-      y-label: $f(x)$,
-      x-tick-step: 1,
-      y-tick-step: 0.5,
-      x-min: -3,
-      x-max: 3,
-      y-min: -0.5,
-      y-max: 3,
-      {
-        // ReLU
-        cetz.plot.add(
-          ((x,) => (calc.max(0, x),)),
-          domain: (-3, 3),
-          samples: 100,
-          style: (stroke: (paint: mo, thickness: 2pt)),
-          label: [ReLU]
-        )
-
-        // Tanh (per confronto)
-        cetz.plot.add(
-          ((x,) => (calc.tanh(x),)),
-          domain: (-3, 3),
-          samples: 100,
-          style: (stroke: (paint: mb, thickness: 1.5pt, dash: "dashed")),
-          label: [Tanh]
-        )
-
-        // Sigmoid (per confronto)
-        cetz.plot.add(
-          ((x,) => (1 / (1 + calc.exp(-x)),)),
-          domain: (-3, 3),
-          samples: 100,
-          style: (stroke: (paint: mr, thickness: 1.5pt, dash: "dotted")),
-          label: [Sigmoid]
-        )
-      }
-    )
-  })
-  ```
-  caption: [Confronto tra funzioni di attivazione: ReLU (arancione), Tanh (blu tratteggiato) e Sigmoid (rosso punteggiato)]
-)
-*/
+// aggiungi grafico relu
 
 ==== Teorema di Approssimazione Universale con ReLU
 
