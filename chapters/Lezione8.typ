@@ -1,6 +1,19 @@
 #import "../template.typ": *
 = Intro Deep Learning
 
+Possiamo vedere un modello di deep learning come una _scatola nera_ il cui compito è apprendere un set di *parametri $Theta$* (detti anche iper-parametri).\
+Dati:
+- Osservazioni ${(mr(x_i),mb(y_i))}$, dove:
+  - *$mr(x_i)$* sono ciò che ha predetto il modello
+  - *$mb(y_i)$* è la _label_ corretta
+- Un modello parametrico: $f(x, Theta)$
+
+La fase di apprendimento (learning) consiste nel trovare il set di parametri $theta^*$ tale che:
+$
+  theta^* = arg min_(Theta) mr(L)(f(x, Theta), y)
+$
+Dove $mr(L)$ è una *funzione di loss*.
+
 == Funzioni di Attivazione
 
 I modelli di deep learning sono in grado di catturare informazioni *al di là dell'osservabile*, grazie all'uso delle funzioni di attivazione che introducono non-linearità nel modello.
@@ -293,10 +306,10 @@ Le label $y_i in {1, 2, dots, K}$ vengono rappresentate in *one-hot encoding*:
 #attenzione()[
   *Obiettivo*: vogliamo trovare il miglior $theta$ (parametri del modello) che massimizza la log-likelihood (o equivalentemente minimizza la negative log-likelihood). Questo corrisponde a trovare il modello che spiega meglio il dataset $D$, tenendo conto dei bias induttivi che abbiamo introdotto nell'architettura.
 ]
-  nn.linear(784,128)
-  nn.ReLu()
-  nn.linear(128,10)
-  compatibili, output matcha con input
+nn.linear(784,128)
+nn.ReLu()
+nn.linear(128,10)
+compatibili, output matcha con input
 
 
 Alla x  vengono applicati in sequena i layer che ho definito.
