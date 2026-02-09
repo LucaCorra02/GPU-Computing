@@ -14,6 +14,36 @@ $
 $
 Dove $mr(L)$ è una *funzione di loss*.
 
+La predizione di una rete neurale ($x$) è quindi data da:
+$
+  x -> f(x, mr(W), mb(b))\
+  Theta = underbrace(mr(W), "matrice"\ "pesi"),underbrace(mb(b), "bias")
+$
+
+La fase di *training* consiste nei seguenti passaggi (in loop):
+- *forward pass*: vengono computate le predizioni, per un certo batch (sotto-insieme) di dati
+- *loss*: le predizioni vengono comparate con la *ground truth*
+- *backpropagation*: vengono computati i gradienti
+- *update parameters*: vengono aggiornati il set di pesi $W$ del modello, in modo da minimizzare la loss.
+
+#informalmente()[
+  Quello che accade è che dato un input $x$, esso subisce varie _trasformazioni_ ovvero passa per diversi *layer nascosti* del modello. Ogni layer nascosto è formato da una fila di neuoroni, ciascuno con la propria funzione di attivazione. La predizione finale si ottiene nel seguente modo:
+  $
+    mg(o) = mr(tanh)(mb(W_(h))(dots mr(tanh)(mb(w_(2))(mr(tanh)(mb(w_1) mo(x) + mb(b_1))+mb(b_2)))dots +mb(b_n)))
+  $
+  Dove:
+  - $mo(x)$ è l'input
+  - $mg(o)$ è la predizione del modello
+  - $mr(tanh)$ è la funzione di attivazione
+  - $mb(W_h)$ e $mb(b_h)$ sono i _pesi_ ai vari livelli che il modello apprende
+]
+
+
+
+
+
+
+
 == Funzioni di Attivazione
 
 I modelli di deep learning sono in grado di catturare informazioni *al di là dell'osservabile*, grazie all'uso delle funzioni di attivazione che introducono non-linearità nel modello.
@@ -52,10 +82,10 @@ $
 #figura(
   ```python
   import cetz.plot
-  
+
   cetz.canvas({
     import cetz.draw: *
-    
+
     cetz.plot.plot(
       size: (10, 6),
       x-label: $x$,
@@ -75,7 +105,7 @@ $
           style: (stroke: (paint: mo, thickness: 2pt)),
           label: [ReLU]
         )
-        
+
         // Tanh (per confronto)
         cetz.plot.add(
           ((x,) => (calc.tanh(x),)),
@@ -84,7 +114,7 @@ $
           style: (stroke: (paint: mb, thickness: 1.5pt, dash: "dashed")),
           label: [Tanh]
         )
-        
+
         // Sigmoid (per confronto)
         cetz.plot.add(
           ((x,) => (1 / (1 + calc.exp(-x)),)),
@@ -183,7 +213,7 @@ class ModelNN(nn.Module):
 #figura(
   ```python
   import fletcher as fl
-  
+
   fl.diagram(
     node-stroke: 1pt,
     spacing: (20mm, 8mm),
@@ -200,23 +230,23 @@ class ModelNN(nn.Module):
         (pos: (0, 6), label: [Softmax], fill: mg),
         (pos: (0, 7), label: [Output\n$hat(mb(y))$], fill: mb),
       )
-      
+
       for (i, layer) in layers.enumerate() {
         fl.node(
-          layer.pos, 
-          layer.label, 
+          layer.pos,
+          layer.label,
           shape: rect,
           corner-radius: 5pt,
           fill: gradient.linear(white, layer.fill, angle: 45deg),
           width: 30mm,
           height: 10mm
         )
-        
+
         if i < layers.len() - 1 {
           fl.edge(layer.pos, layers.at(i + 1).pos, "->", stroke: 2pt)
         }
       }
-      
+
       // Annotazioni
       fl.node((1.5, 1.5), [Trasformazione\nlineare], stroke: none, fill: none)
       fl.node((1.5, 3.5), [Non-linearità], stroke: none, fill: none)
@@ -644,7 +674,7 @@ Il processo di training di una rete neurale segue questi passi:
 #figura(
   ```python
   import fletcher as fl
-  
+
   fl.diagram(
     node-stroke: 1pt,
     node-fill: gradient.linear(..mo.colors),
@@ -652,13 +682,13 @@ Il processo di training di una rete neurale segue questi passi:
     edge-stroke: 1pt,
     {
       let (input, forward, loss, backward, update, output) = ((0,0), (1,0), (2,0), (2,1), (1,1), (0,1))
-      
+
       fl.node(input, [Input \ $mb(x), mb(y)$], corner-radius: 5pt, extrude: (0, 3))
       fl.node(forward, [Forward \ Pass], corner-radius: 5pt)
       fl.node(loss, [Loss \ $L$], corner-radius: 5pt, fill: mr)
       fl.node(backward, [Backward \ Pass], corner-radius: 5pt)
       fl.node(update, [Update \ $theta$], corner-radius: 5pt, fill: mg)
-      
+
       fl.edge(input, forward, "->", [Batch])
       fl.edge(forward, loss, "->", [$hat(mb(y))$])
       fl.edge(loss, backward, "->", [Gradiente])
@@ -837,7 +867,7 @@ class ModelWithDropout(nn.Module):
         self.fc2 = nn.Linear(256, 128)
         self.dropout2 = nn.Dropout(p=0.3)  # 30% dropout
         self.fc3 = nn.Linear(128, 10)
-    
+
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = self.dropout1(x)  # Applicato solo in training
@@ -880,7 +910,7 @@ class ModelWithBatchNorm(nn.Module):
         self.fc2 = nn.Linear(256, 128)
         self.bn2 = nn.BatchNorm1d(128)
         self.fc3 = nn.Linear(128, 10)
-    
+
     def forward(self, x):
         x = self.bn1(F.relu(self.fc1(x)))
         x = self.bn2(F.relu(self.fc2(x)))
@@ -898,7 +928,7 @@ class ModelWithBatchNorm(nn.Module):
   ```
   Linear -> BatchNorm -> Activation (ReLU) -> Dropout
   ```
-  
+
   (Anche se l'ordine BatchNorm/Activation è dibattuto)
 ]
 
@@ -914,7 +944,7 @@ patience_counter = 0
 for epoch in range(max_epochs):
     train_loss = train_one_epoch(...)
     val_loss = validate(...)
-    
+
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         patience_counter = 0
@@ -922,7 +952,7 @@ for epoch in range(max_epochs):
         torch.save(model.state_dict(), 'best_model.pth')
     else:
         patience_counter += 1
-    
+
     if patience_counter >= patience:
         print(f"Early stopping at epoch {epoch}")
         break
@@ -948,7 +978,7 @@ train_transform = transforms.Compose([
     transforms.RandomRotation(10),
     transforms.ColorJitter(brightness=0.2, contrast=0.2),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
                         std=[0.229, 0.224, 0.225])
 ])
 ```
