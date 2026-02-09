@@ -56,7 +56,7 @@ $
 Dove la funzione di attivazione viene è applicata *componente per componente*.
 
 #figure(
-  image("/assets/image.png", width: 70%),
+  image("/assets/linear-classifier.png", width: 70%),
 )
 
 Nell'immagine di sinistra, tutti gli input $x$ convergono in un singolo neurone con funzione di attivazione $sigma$, producendo un singolo output. A destra, gli input si connettono a multipli neuroni output (uno per classe), ciascuno con la propria funzione di attivazione $sigma$, permettendo la classificazione in $K$ classi diverse..
@@ -83,7 +83,7 @@ $
 $
 
 #figure(
-  image("/assets/image.png", width: 70%),
+  image("/assets/mlp.png", width: 70%),
 )
 
 Le reti neurali profonde trasformano i dati attraverso *successive mappature non lineari*:
