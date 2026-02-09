@@ -113,7 +113,45 @@ $
 $
 Ha output nel range $[-1, 1]$ con saturazione agli estremi (per $x$ di dimensioni elevate) e maggiore sensibilità al centro.
 
-//aggiungi grafico tanh
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    // Assi
+    line((-3.5, 0), (3.5, 0), mark: (end: ">"))
+    content((3.7, 0), $x$)
+    line((0, -1.5), (0, 1.5), mark: (end: ">"))
+    content((0, 1.7), $tanh(x)$)
+
+    // Tacche asse x
+    for i in range(-3, 4) {
+      if i != 0 {
+        line((i, -0.05), (i, 0.05))
+        content((i, -0.25), text(size: 8pt, str(i)))
+      }
+    }
+
+    // Tacche asse y
+    for i in (-1, -0.5, 0.5, 1) {
+      line((-0.05, i), (0.05, i))
+      content((-0.3, i), text(size: 8pt, if i == 0.5 { "0.5" } else if i == -0.5 { "-0.5" } else { str(i) }))
+    }
+
+    // Linee tratteggiate per limiti
+    line((-3.5, 1), (3.5, 1), stroke: (paint: gray, dash: "dashed"))
+    line((-3.5, -1), (3.5, -1), stroke: (paint: gray, dash: "dashed"))
+
+    // Curva tanh
+    let points = ()
+    for i in range(0, 101) {
+      let x = -3 + i * 6 / 100
+      let y = calc.tanh(x)
+      points.push((x, y))
+    }
+    line(..points, stroke: (paint: blue, thickness: 2pt))
+  }),
+  caption: [Grafico della funzione tangente iperbolica $tanh(x)$],
+)
 
 
 === ReLU (Rectified Linear Unit)
@@ -127,11 +165,48 @@ $
   La ReLU restituisce $0$ quando $x < 0$ e $x$ quando $x >= 0$. Applicando una trasformazione lineare si ottiene: $R(w x + b)$ che dipende dal valore della retta $w x + b$.
 ]
 
-// aggiungi grafico relu
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+
+    // Assi
+    line((-3.5, 0), (3.5, 0), mark: (end: ">"))
+    content((3.7, 0), $x$)
+    line((0, -0.5), (0, 3.5), mark: (end: ">"))
+    content((0, 3.8), $"ReLU"(x)$)
+
+    // Tacche asse x
+    for i in range(-3, 4) {
+      if i != 0 {
+        line((i, -0.05), (i, 0.05))
+        content((i, -0.3), text(size: 8pt, str(i)))
+      }
+    }
+
+    // Tacche asse y
+    for i in range(1, 4) {
+      line((-0.05, i), (0.05, i))
+      content((-0.3, i), text(size: 8pt, str(i)))
+    }
+
+    // Parte x < 0 (costante a 0)
+    line((-3.5, 0), (0, 0), stroke: (paint: blue, thickness: 2pt))
+
+    // Parte x >= 0 (identità)
+    line((0, 0), (3, 3), stroke: (paint: blue, thickness: 2pt))
+
+    // Punto in (0,0) per evidenziare il cambio
+    circle((0, 0), radius: 0.08, fill: blue, stroke: none)
+  }),
+  caption: [Grafico della funzione ReLU (Rectified Linear Unit)],
+)
 
 ==== Teorema di Approssimazione Universale con ReLU
 
-Data una funzione continua $f in C([a,b], RR)$, è possibile *approssimala come combinazione lineare di ReLU*.
+Data una qualsiasi funzione continua $f in C([a,b], RR)$, è possibile *approssimala come una combinazione lineare di ReLU*:
+$
+  f(x) tilde sum_i sigma(w_i dot x + b_i)
+$
 
 Il principio di funzionamento è il seguente:
 + Prendiamo tante ReLU con diverse traslazioni e scalature
@@ -139,7 +214,73 @@ Il principio di funzionamento è il seguente:
 + Più ReLU utilizziamo, migliore è l'approssimazione (ma aumenta la complessità)
 
 #esempio()[
-  Combinando una funzione ReLU "rossa" e una "blu" con opportuni pesi, possiamo creare una funzione risultante che si avvicina alla funzione target (grigia) che vogliamo approssimare.
+  #figure(
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Assi
+      line((-0.5, 0), (9, 0), mark: (end: ">"))
+      content((9.2, 0), $x$)
+      line((0, -2), (0, 2.5), mark: (end: ">"))
+      content((0, 2.7), $f(x)$)
+
+      // Griglia leggera
+      for i in range(1, 9) {
+        line((i, -2), (i, 2.5), stroke: (paint: gray.lighten(60%), thickness: 0.5pt))
+      }
+      for i in (-2, -1, 1, 2) {
+        line((0, i), (9, i), stroke: (paint: gray.lighten(60%), thickness: 0.5pt))
+      }
+
+      // Funzione target complessa (blu scuro)
+      let target = (
+        (0, -0.5),
+        (0.5, -1.2),
+        (1, -0.8),
+        (1.5, 0.2),
+        (2, 1.3),
+        (2.5, 1.5),
+        (3, 1.2),
+        (3.5, 0.6),
+        (4, 0.3),
+        (4.5, 0.5),
+        (5, 1.5),
+        (5.5, 2.0),
+        (6, 1.8),
+        (6.5, 0.8),
+        (7, 0.2),
+        (7.5, -0.5),
+        (8, -1.2),
+        (8.5, -1.5),
+      )
+      line(..target, stroke: (paint: blue.darken(20%), thickness: 3pt))
+
+      // ReLU individuali (grigio chiaro) - alcune componenti
+      // ReLU 1
+      line((0, -0.8), (1.5, -0.8), stroke: (paint: gray, thickness: 1.5pt))
+      line((1.5, -0.8), (3, 0.7), stroke: (paint: gray, thickness: 1.5pt))
+
+      // ReLU 2
+      line((3, 0.3), (4.5, 0.3), stroke: (paint: gray, thickness: 1.5pt))
+      line((4.5, 0.3), (6, 1.8), stroke: (paint: gray, thickness: 1.5pt))
+
+      // ReLU 3
+      line((6, 1.5), (7, 1.5), stroke: (paint: gray, thickness: 1.5pt))
+      line((7, 1.5), (8.5, 0), stroke: (paint: gray, thickness: 1.5pt))
+
+      // Una ReLU evidenziata in rosso
+      line((6.5, 0), (7.5, 0), stroke: (paint: red, thickness: 2pt))
+      line((7.5, 0), (9, 1.5), stroke: (paint: red, thickness: 2pt))
+
+      // Etichetta formula
+      content((4.5, 2.3), text(
+        size: 10pt,
+        $f(x) = sigma(w_1 x + b_1) + sigma(w_2 x + b_2) + sigma(w_3 x + b_3) + dots$,
+      ))
+    }),
+    caption: [Approssimazione di una $mb("funzione")$ mediante combinazione lineare di funzioni ReLU],
+  )
+  Le componenti *grigie* rappresentano singole ReLU traslate e scalate, mentre la ReLU $mr("rossa")$ mostra un esempio specifico. Sommando opportunamente queste funzioni si ottiene una curva spezzata che approssima la funzione target.
 ]
 
 #attenzione()[
@@ -149,24 +290,26 @@ Il principio di funzionamento è il seguente:
   - Trade-off tra capacità di approssimazione e costo computazionale
 ]
 
-==== Generalizzazione del Teorema
+=== Generalizzazione del Teorema
 
-Il teorema può essere generalizzato: per ogni funzione continua $g:[0,1]^D -> RR$ è possibile approssimarla con *un singolo livello nascosto* (percettrone) utilizzando:
+Il teorema può essere generalizzato: per ogni funzione continua $g:[0,1]^D -> RR$ (Con $D$ dimensione dell'input) è possibile approssimarla con *un singolo livello nascosto* (percettrone) utilizzando:
 - $W in RR^(K times D)$ (matrice dei pesi)
 - $b in RR^K$ (vettore di bias)
 - $omega in RR^K$ (pesi di output)
+La rete sarà quindi:
+$
+  x -> w^T sigma(W x + b)
+$
 
 #nota()[
-  Aumentando $K$ (ovvero il numero di *unità nascoste*), abbiamo più possibilità di apprendere funzioni complesse, ma con un costo computazionale maggiore.
+  Aumentando $K$ (ovvero il numero di *unità nascoste*), la rete a più possibilità di apprendere funzioni complesse, ma con un costo computazionale maggiore.
 ]
 
-=== Modelli Profondi vs Modelli Flat
+Il vantaggio principale di avere dei *modelli profondi* (deep) rispetto ai modelli superficiali (flat) è che le *reti neurali gerarchiche* con diversi livelli di profondità sono in grado di estrarre *più informazioni strutturate* dai dati. Questo accade in quanto i modelli profondi sfruttano *bias induttivi* (scelti dal progettista) per apprendere pattern sempre più complessi attraverso i livelli.
 
-Il vantaggio principale dei *modelli profondi* (deep) rispetto ai modelli superficiali (flat) è che le *reti neurali gerarchiche* con diversi livelli di profondità sono in grado di estrarre *più informazioni strutturate* dai dati.
-
-==== Rappresentazioni Gerarchiche
-
-I modelli profondi sfruttano *bias induttivi* (scelti dal progettista) per apprendere pattern sempre più complessi attraverso i livelli:
+#nota()[
+  Un *bias induttivo* inferisce sull'architettura della rete, assumento che l'output deriva da una specifica composizione dell'input
+]
 
 #esempio()[
   *Visione artificiale*:
@@ -175,9 +318,8 @@ I modelli profondi sfruttano *bias induttivi* (scelti dal progettista) per appre
   - *Ultimi livelli*: comprendono l'immagine nel suo complesso, riconoscendo oggetti e scene
 ]
 
-#nota()[
-  Il *learning* è una stima di parametri sempre più efficaci, utilizzando bias induttivi (embedding e livelli intermedi) per favorire l'apprendimento di *rappresentazioni gerarchiche* dei dati.
-]
+Il *learning* è una stima di parametri sempre più efficaci, utilizzando bias induttivi (embedding e livelli intermedi) per favorire l'apprendimento di *rappresentazioni gerarchiche* dei dati.
+
 
 == PyTorch nn Framework
 
