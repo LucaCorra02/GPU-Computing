@@ -369,20 +369,20 @@ Nel training reale, l'apprendimento richiede un *bilanciamento* tra due estremi:
 
 == PyTorch nn Framework
 
-Utilizziamo il modulo `torch.nn`, essenziale per costruire modelli di deep learning in PyTorch.
+Verrà utilizzato il modulo `torch.nn`, per costruire modelli di deep learning in PyTorch.
 
-=== Componenti Principali
-
-Il framework `torch.nn` fornisce diversi moduli fondamentali:
-
+Il framework `torch.nn` fornisce diversi moduli:
 / Layer: Tutti i vari *livelli* della rete. Esistono layer ricorrenti, lineari, convoluzionali, ecc.
 / Funzioni di attivazione: ReLU, Sigmoid, Tanh, Softmax, ecc.
 / Livelli di normalizzazione: BatchNorm, LayerNorm, ecc.
 / Funzioni di perdita (loss): MSE, CrossEntropy, BCE, ecc.
 
-=== Costruzione di un Modello Custom
+=== Modules (Layers)
 
-Quando creiamo un nuovo modello, dobbiamo costruire una *sotto-classe di `nn.Module`*. La struttura base è:
+Quando creiamo un nuovo modello, dobbiamo costruire una *sotto-classe di `nn.Module`*.
+
+
+ La struttura base è:
 
 ```python
 class ModelNN(nn.Module):
