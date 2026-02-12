@@ -66,14 +66,14 @@ Nell'immagine di sinistra, tutti gli input $x$ convergono in un singolo neurone 
 ]
 
 #informalmente()[
-  Se i dati del dataset, sono divisi in due categorie, dove: i blu sono al centro e i dati rossi sono intorno (come un cerchio), il classificatore lineare fallirà sempre, indipendentemente dalla funzione di attivazione in uscita, equazione della retta $x dot w + b = 0$ troppo semplice.
+  Se i dati del dataset, sono divisi in due categorie, dove: i blu sono al centro e i dati rossi sono intorno (come un cerchio), il classificatore lineare fallirà sempre, indipendentemente dalla funzione di attivazione in uscita. L'equazione della retta è data da $x dot w + b = 0$ troppo semplice in questo caso.
 ]
 
 == Multi-Layer Perceptron (MLP)
 
 Per questo motivo si passa a dei modelli con un architettura gerarchica organizzata su livelli. I modelli MLP presentano un *architettura a strati*, dove:
 - Ogni MLP è composto da L strati, dove ogni strato presenta i propri pesi $W^l$ e $b^l$.
-- L'output di uno strato diventa l'output del successivo:
+- L'output di uno strato diventa l'input del successivo:
 $
   x^l = sigma(W^l dot x^(l-1) + b^l)
 $
@@ -129,7 +129,7 @@ Le *funzioni di attivazione* presentano caratteristiche specifiche:
 - La *parte centrale* rappresenta la regione di incertezza del modello
 
 #nota()[
-  Le funzioni di attivazione servono per definire *regioni non lineari* nello spazio, creando curvature che permettono di separare gruppi di dati in base alla loro categoria di appartenenza. In uno *stesso spazio di embedding*, creano superfici di separazione complesse.
+  Le funzioni di attivazione servono per definire *regioni non lineari* nello spazio, creando curvature che permettono di separare gruppi di dati in base alla loro categoria di appartenenza (in uno *stesso spazio di embedding*) creando superfici di separazione complesse.
 ]
 
 === Tangente Iperbolica (Tanh)
@@ -395,54 +395,10 @@ class ModelNN(nn.Module):
         return output
 
 ```
-/*
-#figura(
-  ```python
-  import fletcher as fl
 
-  fl.diagram(
-    node-stroke: 1pt,
-    spacing: (20mm, 8mm),
-    edge-stroke: 1.5pt,
-    mark-scale: 70%,
-    {
-      let layers = (
-        (pos: (0, 0), label: [Input\n$mb(x)$], fill: mb),
-        (pos: (0, 1), label: [Linear\n$W_1 mb(x) + mb(b)_1$], fill: mo),
-        (pos: (0, 2), label: [BatchNorm], fill: mg),
-        (pos: (0, 3), label: [ReLU\n$max(0, dot)$], fill: mr),
-        (pos: (0, 4), label: [Dropout\n$p=0.5$], fill: mp),
-        (pos: (0, 5), label: [Linear\n$W_2 dot + mb(b)_2$], fill: mo),
-        (pos: (0, 6), label: [Softmax], fill: mg),
-        (pos: (0, 7), label: [Output\n$hat(mb(y))$], fill: mb),
-      )
 
-      for (i, layer) in layers.enumerate() {
-        fl.node(
-          layer.pos,
-          layer.label,
-          shape: rect,
-          corner-radius: 5pt,
-          fill: gradient.linear(white, layer.fill, angle: 45deg),
-          width: 30mm,
-          height: 10mm
-        )
 
-        if i < layers.len() - 1 {
-          fl.edge(layer.pos, layers.at(i + 1).pos, "->", stroke: 2pt)
-        }
-      }
 
-      // Annotazioni
-      fl.node((1.5, 1.5), [Trasformazione\nlineare], stroke: none, fill: none)
-      fl.node((1.5, 3.5), [Non-linearità], stroke: none, fill: none)
-      fl.node((1.5, 4), [Regolarizzazione], stroke: none, fill: none)
-    }
-  )
-  ```
-  caption: [Architettura tipica di una rete neurale feedforward con BatchNorm, ReLU e Dropout]
-)
-*/
 === Layer Lineari (Trasformazioni Affini)
 
 Una *trasformazione lineare* in PyTorch è implementata come una *trasformazione affine*:
