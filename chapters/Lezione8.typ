@@ -407,6 +407,24 @@ La stuttura è la seguente:
 
 === Layer Lineari (Trasformazioni Affini)
 
+Una classica trasformazione lineare (eseguita da neuorone):
+$
+  "output" = tanh(a x + b)
+$
+In PyTorch viene implementata seguendo una forma equivalente (*trasformazione affine*):
+$
+  y = x A^T + b
+$
+Dove:
+- _input_ $x$: `shape(batch_size, in_features)`
+- _output_ $y$: `shape(batch_size, out_features)`
+- _weight_ $A$: `shape(out_features, in_features)`
+- _bias_: `shape(out_features)`
+
+Questa forma risulta più efficiente in quanto l'input $x$ è rappresentato come un vettore riga, mentre i batch come una matrice.
+
+
+
 Una *trasformazione lineare* in PyTorch è implementata come una *trasformazione affine*:
 $
   y = A overline(x) + overline(b)
