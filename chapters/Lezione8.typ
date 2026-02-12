@@ -382,7 +382,7 @@ Il framework `torch.nn` fornisce diversi moduli:
 Quando creiamo un nuovo modello, dobbiamo costruire una *sotto-classe di `nn.Module`*.
 
 
- La struttura base è:
+La struttura base è:
 
 ```python
 class ModelNN(nn.Module):
@@ -395,9 +395,15 @@ class ModelNN(nn.Module):
         return output
 
 ```
+La stuttura è la seguente:
+- `__init__`: deifinisce l'architettura della rete neurale (numero di later del modello)
+- `forward()`: implementa come computare i logits a partire dall'output
 
+#attenzione()[
+  In PyTorch, un modello viene chiamato direttamente come `output = model(x)`. Questo in quanto il modulo `nn.Module` sovrascrive il metodo di pythom `__call__`.
 
-
+  Quando viene eseguito `y=model(x)`, vengono chiamati una serie di metodi aggiuntivi prima del metodo `forward()` (è sempre consigliato usare questa sinattsi piuttosto che chiamare direttamente il metodo `forward`).
+]
 
 === Layer Lineari (Trasformazioni Affini)
 
