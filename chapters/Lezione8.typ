@@ -407,93 +407,106 @@ La stuttura è la seguente:
 
 === Layer Lineari (Trasformazioni Affini)
 
-Una classica trasformazione lineare (eseguita da neuorone):
+Una classica trasformazione lineare (eseguita da un singolo neuorone):
 $
   "output" = tanh(a x + b)
 $
-In PyTorch viene implementata seguendo una forma equivalente (*trasformazione affine*):
+In PyTorch viene implementata seguendo una forma equivalente ottimizata che prende il nome di *trasformazione affine*. In particolare per un singolo vettore (riga) $x$:
 $
-  y = x A^T + b
+  y = x A^T
 $
 Dove:
-- _input_ $x$: `shape(batch_size, in_features)`
-- _output_ $y$: `shape(batch_size, out_features)`
-- _weight_ $A$: `shape(out_features, in_features)`
-- _bias_: `shape(out_features)`
+- _input_ $x in R^(1 times D)$
+- _weight_ $A in R^(C times D)$
+- _output_ $y = x A^T in R^(1 times C)$
 
-Questa forma risulta più efficiente in quanto l'input $x$ è rappresentato come un vettore riga, mentre i batch come una matrice.
-
-
-
-Una *trasformazione lineare* in PyTorch è implementata come una *trasformazione affine*:
-$
-  y = A overline(x) + overline(b)
-$
-
-dove $A$ è una matrice e $overline(b)$ è il vettore di bias.
-
-==== Rappresentazione Matriciale
-
-Moltiplicando le righe di $A$ per il vettore colonna $overline(x)$ e sommando il bias, otteniamo l'output.
-
-Se applichiamo la trasposizione a entrambi i membri:
-$
-  y & = (A overline(x))^t + overline(b)^t \
-  y & = overline(x)^t A^t + overline(b)^t
-$
-
-Equivalentemente (e più efficientemente per la rappresentazione in PyTorch):
-$
-  y = overline(x) W^t + overline(b)
-$
+Questa scrittura risulta equivalente alla forma classica $y = x A$, in quanto l'input $x$ è rappresentato come un vettore riga, mentre i batch come una matrice.
 
 #nota()[
-  *Dimensioni dei tensori*:
-  - *Input*: `(batch_size, in_features)`
-  - *Output*: `(batch_size, out_features)`
-
-  Le features differiscono in base alle dimensioni della matrice $W in RR^("out_features" times "in_features")$ e del vettore bias $b in RR^("out_features")$.
+  Viene applicata la seguente trasformazione dove $overline(x)$ indica un vettore riga (anzichè a colonna):
+  $
+    y & = (A overline(x))^t + overline(b)^t \
+    y & = overline(x)^t + A^t + overline(b)^t \
+    y & = x A^t + b
+  $
 ]
+
+
+La scrittura sopra risulta adattarse meglio per i *batch*.
+Dato un Batch (di dimensione $B$) chiamato $X$, ovvero un insieme di vettori $x_i$ ciascuno con dimensione $D$ e considerano $C$ dimensioni di output, otteniamo:
+$
+  X = vec(x_1, x_2, dots, x_n) in R^(B times D)
+$
+Possiamo applicare una trasformazione all'intero batch nel seguente modo:
+$
+  Y = X A^T, space Y in R^(B times C)
+$
+#nota()[
+  La trasposizione è necessaria in quanto $A in R^(C times D)$, per le proprietà del prodotto matriciale le dimensioni devono combiaciare con quelle dell'input.
+]
+
+Ogni riga soddisfa:
+$
+  y_i = x_i A^T "for" i = 1,dots,B
+$
+
+Aggiungendo il bias $b in R^C$, la formula diventa:
+$
+  Y = X A^T + 1b^t
+$
+Dove $1 in R^B$ è un vettore di uni, in questo modo $b$ viene _trasmesso_ a tutte le righe.
 
 #esempio()[
-  Creazione e utilizzo di un layer lineare:
-  ```python
-  layer = nn.Linear(in_features=5, out_features=3)
-  x = torch.randn(2, 5)  # batch_size = 2
-  y = layer(x)
-  print(y.shape)  # torch.Size([2, 3])
+  Esempio di rete con 2 layer:
+  - `Linear(in_features=3, out_features=5, bias=True)`
+  - `Linear(in_features=5, out_features=2, bias=True)`
+
+  ```py
+  import torch
+  class SimpleNet(nn.Module):
+    def __init__(self):
+      super().__init__()
+      self.fc1 = nn.Linear(3, 5)
+      self.relu = nn.ReLU()
+      self.fc2 = nn.Linear(5, 2)
+
+    def forward(self, x):
+      x = self.fc1(x)
+      x = self.relu(x)
+      x = self.fc2(x)
+      return x
+
+    model = SimpleNet()
+    x = torch.randn(6, 3)
+    y = model(x)
   ```
-
-  L'importante è che il tensore corrisponda sulle `in_features` (dimensione 5). Il risultato avrà dimensione determinata da `out_features` (dimensione 3).
+  In particolare l'otput $y$ avrà size `[6,2]` (batch da 6 righe con 2 features).
 ]
 
-==== Composizione Sequenziale di Layer
+=== Altri layer
 
-Un uso tipico prevede la composizione di più layer in sequenza:
+Oltre ai clasici layer lineari, esistono diversi tipi di layer:
 
-```python
-model = nn.Sequential(
-    nn.Linear(784, 128),  # Input layer
-    nn.ReLU(),            # Activation
-    nn.Linear(128, 10)    # Output layer
+#figure(
+  table(
+    columns: 3,
+    align: (left, left, left),
+    stroke: 0.5pt,
+    [*Layer*], [*Description*], [*Example*],
+    [#raw("nn.Linear")], [Fully connected layer], [#raw("nn.Linear(in_features, out_features)")],
+    [#raw("nn.Conv2d")], [2D convolution], [#raw("nn.Conv2d(3, 64, 3, stride=1, padding=1)")],
+    [#raw("nn.LSTM")], [Recurrent layer], [#raw("nn.LSTM(input_size, hidden_size)")],
+    [#raw("nn.BatchNorm2d")], [Normalization layer], [#raw("nn.BatchNorm2d(64)")],
+  ),
+  kind: table,
 )
-```
 
-#nota()[
-  I layer devono essere *compatibili*: l'output di un layer deve corrispondere all'input del layer successivo. Nell'esempio: $784 -> 128 -> 128 -> 10$.
-]
-
-Quando passiamo un input `x` al modello, vengono applicati in sequenza tutti i layer definiti
-$
-  y & = (A overline(x))^t+overline(b)^t \
-  y & = overline(x)^t A^t + overline(b)^t
-$
-Equivale a scrivere (usanPesi
+=== Inizializzazione dei pesi
 
 All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene *inizializzata casualmente*.
 
 #attenzione()[
-  L'inizializzazione dei parametri è fondamentale per il successo del training. Esiste un'intera branca di ricerca che studia come inizializzare i parametri: *da dove si parte influenza fortemente come il modello evolve* durante l'addestramento.
+  L'inizializzazione dei parametri è fondamentale per il successo del training. Esiste un'intera branca di ricerca che studia come inizializzare i parametri: *il set di pesi di partenza influenza fortemente come il modello evolve* durante l'addestramento.
 ]
 
 == Funzioni di Loss
