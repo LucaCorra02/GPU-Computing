@@ -501,20 +501,14 @@ Oltre ai clasici layer lineari, esistono diversi tipi di layer:
   kind: table,
 )
 
-=== Inizializzazione dei pesi
-
-All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene *inizializzata casualmente*.
-
-#attenzione()[
-  L'inizializzazione dei parametri è fondamentale per il successo del training. Esiste un'intera branca di ricerca che studia come inizializzare i parametri: *il set di pesi di partenza influenza fortemente come il modello evolve* durante l'addestramento.
-]
-
 == Funzioni di Loss
 
 Le *funzioni di loss* (o funzioni di costo) quantificano l'errore tra le predizioni del modello e i valori reali. Durante il *training*, l'obiettivo è *minimizzare questa funzione*.
 
-Nell'intera sezione chiameremo le predizioni del modello con $hat(y_i)$ mentre l'etichetta corretta associata con $y_i$.
 
+#attenzione()[
+  Nell'intera sezione chiameremo le predizioni del modello con $hat(y_i)$ mentre l'etichetta corretta associata con $y_i$.
+]
 === Mean Squared Error (MSE) Loss
 
 Calcola la *differenza quadratica media* tra valori predetti e valori reali:
@@ -612,6 +606,10 @@ $
 
 === Binary Cross-Entropy (BCE) Loss
 
+#informalmente()[
+  Quanto ti sei sbagliato nel valutare la probabilità di successo e quella di fallimento.
+]
+
 La *Binary Cross-Entropy* è utilizzata per problemi di *classificazione binaria* ($y_i in {0,1}$):
 $
   L_"BCE" = -1/N sum_(i=1)^N [y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i)]
@@ -619,6 +617,8 @@ $
 
 #nota()[
   Siccome il modello produce dei valori $hat(y)_i in (-infinity,+infinity)$ (logits), viene applicata una funzione *Sigmoid* $sigma$ all'output del modello (non esiste il $log$ di numeri negativi). La sigmoide è una funzione con una forma ad `S`, che mappa un qualsiasi valore reale in un intervallo compreso tra $[0,1]$, aderendo così alle richieste della funzione di loss.
+
+  La funzione `nn.BCEWithLogitsLoss()` combina questi due comportamenti.
 ]
 
 ==== Concetto di Entropia
@@ -643,29 +643,47 @@ Nella *BCE* per classificazione binaria:
 - *$y_i = 1$* (label $mg("vera")$):
   Vogliamo che il modello fornisca una predizione $hat(y)_i approx 1$:
   $
-    &= -(y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i))\
-    &= - 1 log(hat(y)_i) - (1-mg(1)) log(1-hat(y)_i)\
-    &= - log(hat(y)_i)
+    & = -(y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i)) \
+    & = - 1 log(hat(y)_i) - (1-mg(1)) log(1-hat(y)_i) \
+    & = - log(hat(y)_i)
   $
   minimizziamo $-log hat(y)_i$
 
 - *$y_i = 0$* (label $mr("falsa")$): Vogliamo che il modello predica  $hat(y)_i approx 0$:
 $
-  &= -(y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i))\
-  &= - (mr(0) log(hat(y)_i) + (1-mr(0)) log(1-hat(y)_i)) \
-  &=  - log(1-hat(y)_i)
+  & = -(y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i)) \
+  & = - (mr(0) log(hat(y)_i) + (1-mr(0)) log(1-hat(y)_i)) \
+  & = - log(1-hat(y)_i)
 $
- quindi minimizziamo $-log(1 - hat(y)_i)$
+quindi minimizziamo $-log(1 - hat(y)_i)$
 
 La loss *penalizza fortemente* predizioni sbagliate con alta confidenza.
 
 == Classificazione Multiclasse
 
-Nella *classificazione multiclasse* (più di 2 classi), il modello produce diversi valori (chiamati *logits*) in uscita, uno per ogni classe $k in {1, 2, dots, K}$.
+Nella *classificazione multiclasse* (più di 2 classi), il modello produce diversi valori (chiamati *logits*) in uscita, uno per ogni classe $k in {1, 2, dots, K}$. Vengono quindi eseguite le seguenti operazioni:
+- Si ottengono le predizioni del modello (logits)
+- Viene applicata la softmax, ottenendo una probabilità per ogni possibile classe
+- Viene calcolata la log-likelihood (Cross-Entropy)
 
 #nota()[
   I *logits* sono valori reali arbitrari (non normalizzati) prodotti dall'ultimo layer lineare del modello. Per convertirli in probabilità valide, applichiamo la funzione *Softmax*.
 ]
+
+Assunzioni:
+- Ogni input $x$ appertiene al massimo ad una classe
+- Ci sono $K$ possibili classi
+- Il modello deve produrre una distribuzione di probabilità sulle $K$ classi
+
+Formalmente il modello impara:
+$
+  p(y=k |x) space forall k = 1, dots, K
+$
+Ovvero la probabilità che $y$ appartenga alla classe $k$ dato l'input $x$.
+#nota()[
+  L'output del modello non sono delle probabilità, ma dei *logits*, ovveri dei valori compresi nell'intervallo $(-infinity, infinity)$.
+]
+
 
 === Softmax
 
@@ -674,14 +692,14 @@ $
   "softmax"(z_i) = (e^(z_i))/(sum_(j=1)^K e^(z_j))
 $
 
-dove $K$ è il numero di classi e $z_i$ è il logit per la classe $i$.
+dove $K$ è il numero di classi e *$z_i$* è il *logit* per la classe $i$.
 
 #nota()[
   La Softmax garantisce che:
   - Ogni output sia $in [0,1]$
   - La somma di tutte le probabilità sia uguale a $1$: $sum_(i=1)^K "softmax"(z_i) = 1$
   - Ogni valore rappresenta $P(y = k | x)$, la probabilità che $x$ appartenga alla classe $k$
-  - I logits più alti producono probabilità maggiori (enfasi esponenziale)
+  - I logits più alti producono probabilità maggiori (*enfasi esponenziale*)
 ]
 
 #esempio()[
@@ -703,7 +721,7 @@ dove $K$ è il numero di classi e $z_i$ è il logit per la classe $i$.
 
 Dato un dataset $D = {(x_i, y_i)}_(i=1)^N$ con label $y_i$ e input $x_i$, consideriamo un modello $hat(y)_i = M_theta(x_i)$.
 
-==== Caso Binario (Richiamo)
+==== Caso Binario
 
 Per un problema binario $y_i in {0, 1}$ con modello parametrizzato da $theta$ che produce $hat(y)_i = M_theta (x_i) in [0,1]$, la *verosimiglianza* (likelihood) del dataset $D$ dato il modello è:
 $
@@ -714,16 +732,21 @@ $
   *Interpretazione*:
   - Quando $y_i = 1$: contributo $hat(y)_i$ (vogliamo $hat(y)_i$ vicino a 1)
   - Quando $y_i = 0$: contributo $(1-hat(y)_i)$ (vogliamo $hat(y)_i$ vicino a 0)
-  - La verosimiglianza è alta quando il modello predice correttamente tutti gli esempi
+  - *La verosimiglianza è alta quando il modello predice correttamente tutti gli esempi*
 ]
 
-==== Perché usiamo la Log-Likelihood?
 
-Usiamo la *log-likelihood* per diversi motivi pratici e numerici:
+==== Log-Likelihoodù
+
+#informalmente()[
+  Quanto sei stato sorpreso di scoprire che la risposta giusta era quella vera
+]
+
+Viene utilizzata la *log-likelihood* per diversi motivi pratici e numerici:
 
 + *Stabilità numerica*: La produttoria diventa somma
   $
-    log P(D | theta) = log product_(i=1)^N p_i = sum_(i=1)^N log p_i
+    log P(D | theta) underbrace(=, "Proprietà" \ "dei log") log product_(i=1)^N p_i = sum_(i=1)^N log p_i
   $
 
 + *Evitare underflow*: Con $N$ grande, prodotto di probabilità $< 1$ tende rapidamente a 0
@@ -745,14 +768,17 @@ $
 
 ==== Caso Multiclasse
 
-Per la classificazione multiclasse con $y_i in {1, 2, dots, K}$, il modello produce un vettore di probabilità $hat(mb(y))_i = (hat(y)_(i,1), hat(y)_(i,2), dots, hat(y)_(i,K))$ dove $hat(y)_(i,k) = P(y_i = k | x_i)$.
+Per la classificazione multiclasse con $y_i in {1, 2, dots, K}$, il modello produce un vettore di probabilità:
+$
+  hat(mb(y))_i = (hat(y)_(i,1), hat(y)_(i,2), dots, hat(y)_(i,K)) space "dove" hat(y)_(i,k) = P(y_i = k | x_i)
+$
 
 La *verosimiglianza* diventa:
 $
   P(D | theta) = product_(i=1)^N P(y_i | x_i) = product_(i=1)^N hat(y)_(i,y_i)
 $
 
-Dove $hat(y)_(i,y_i)$ indica la probabilità assegnata alla classe corretta per l'esempio $i$-esimo.
+Dove *$hat(y)_(i,y_i)$* indica la *probabilità* assegnata alla classe corretta per l'esempio $i$-esimo.
 
 La *log-likelihood* diventa:
 $
@@ -760,6 +786,10 @@ $
 $
 
 === Cross-Entropy Loss per Classificazione Multiclasse
+
+#informalmente()[
+  Quanto eri sicuro della risposta corretta rispetto a tutte le altre opzioni
+]
 
 La *Cross-Entropy Loss* (o *Categorical Cross-Entropy*) è definita come la *Negative Log-Likelihood* normalizzata:
 $
@@ -775,7 +805,42 @@ dove $y_i in {1, 2, dots, K}$ è l'indice della classe corretta per l'esempio $i
   $
 
   Cerchiamo quindi i parametri $theta^*$ che meglio spiegano il dataset $D$, considerando i bias induttivi dell'architettura scelta.
+
+  Possiamo inoltre vedere La Cross-Entropy come una composizione di due funzioni:
+  $
+    "CrossEntropyLoss" = "LogSoftMax" + "NegativeLogLikehood"
+  $
+  Tradotto in formula:
+  $
+    L_"CE" = -1/N sum_(i=1)^N log((e^(z_(i,y_i)))/(sum_(c=1)^C e^(z_(i,c))))
+  $
 ]
+
+#esempio()[
+  Differenze tra BCE (binary cross entropy) e (multiclass entropy)
+  ```py
+    pred_prob = torch.tensor([0.9, 0.1, 0.8])
+    labels = torch.tensor([1.0, 0.0, 1.0])
+
+    bce = nn.BCELoss()
+    print("BCE:", bce(logits, labels))
+    #BCE: tensor(0.144), poca sorpresa
+
+    ce = nn.CrossEntropyLoss()
+    logits = torch.tensor([[2.0, 1.0, 0.1], [0.5, 2.5, 0.3]])
+    labels = torch.tensor([2, 1])
+    print("CrossEntropy:", ce(logits, labels))
+    # CrossEntropy: tensor(1.2685)
+  ```
+  Come si può vedere dal codice:
+  - `BCE loss`: Si aspetta in input delle probabilità già calcolate (valori tra $0$ e $1$), *non* vuole i logits grezzi.\
+    L'errore è basso perché le predizioni sono molto vicine alla realtà:
+
+  - `CrossEntropy loss`: *Accetta logits grezzi* (numeri reali qualsiasi), non probabilità. Applica la Softmax internamente. Nell'esempio il modello è "molto sorpreso" (ha sbagliato clamorosamente la previsione), generando una penalità alta che alza la media dell'errore.
+]
+
+
+
 
 ==== One-Hot Encoding
 
@@ -831,6 +896,15 @@ Dove:
 ]
 
 == Training e Ottimizzazione
+
+=== Inizializzazione dei pesi
+
+All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene *inizializzata casualmente*.
+
+#attenzione()[
+  L'inizializzazione dei parametri è fondamentale per il successo del training. Esiste un'intera branca di ricerca che studia come inizializzare i parametri: *il set di pesi di partenza influenza fortemente come il modello evolve* durante l'addestramento.
+]
+
 
 === Inizializzazione dei Pesi
 
