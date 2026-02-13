@@ -511,7 +511,9 @@ All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene
 
 == Funzioni di Loss
 
-Le *funzioni di loss* (o funzioni di costo) quantificano l'errore tra le predizioni del modello e i valori reali. Durante il training, l'obiettivo è minimizzare questa funzione.
+Le *funzioni di loss* (o funzioni di costo) quantificano l'errore tra le predizioni del modello e i valori reali. Durante il *training*, l'obiettivo è *minimizzare questa funzione*.
+
+Nell'intera sezione chiameremo le predizioni del modello con $hat(y_i)$ mentre l'etichetta corretta associata con $y_i$.
 
 === Mean Squared Error (MSE) Loss
 
@@ -519,9 +521,8 @@ Calcola la *differenza quadratica media* tra valori predetti e valori reali:
 $
   L_"MSE" = 1/N sum_(i=1)^N (y_i - hat(y)_i)^2
 $
-
-*Proprietà*:
-- Penalizza fortemente gli errori grandi (peso quadratico)
+Dove $N$ è la dimensione del _corpus_. *Proprietà*:
+- *Penalizza* fortemente gli *errori grandi* (peso quadratico)
 - Molto sensibile agli *outlier*
 - Usata principalmente in problemi di *regressione*
 - Funzione *convessa*, essenziale per l'ottimizzazione
@@ -539,10 +540,75 @@ $
 $
 
 *Proprietà*:
-- Meno sensibile agli outlier rispetto a MSE
+- *Meno sensibile* agli outlier rispetto a MSE
 - Penalizza linearmente gli errori
 - Funzione *convessa*
 - Usata in problemi di *regressione* quando si vuole robustezza agli outlier
+
+#figure(
+  cetz.canvas(length: 0.8cm, {
+    import cetz.draw: *
+
+    // Configurazione - grafico più largo e più basso
+    let x-min = -6
+    let x-max = 6
+    let y-max = 10
+
+    // Assi
+    line((x-min, 0), (x-max, 0), mark: (end: ">"))
+    content((x-max + 0.6, 0.5), text(size: 9pt, $"Errore" (y - hat(y))$))
+    line((0, 0), (0, y-max), mark: (end: ">"))
+    content((0, y-max + 0.6), text(size: 9pt, $"Loss"$))
+
+    // Griglia
+    for i in range(-6, 7) {
+      if i != 0 and calc.rem(i, 2) == 0 {
+        line((i, 0), (i, y-max), stroke: (paint: gray.lighten(70%), thickness: 0.5pt, dash: "dotted"))
+        line((i, -0.15), (i, 0.15), stroke: 0.5pt)
+        content((i, -0.5), text(size: 7pt, str(i)))
+      }
+    }
+
+    for i in (2, 4, 6, 8, 10) {
+      line((x-min, i), (x-max, i), stroke: (paint: gray.lighten(70%), thickness: 0.5pt, dash: "dotted"))
+      line((-0.1, i), (0.1, i), stroke: 0.5pt)
+      content((-0.5, i), text(size: 7pt, str(i)))
+    }
+
+    // Funzione MSE (parabola): y = x²/3 (scalata per entrare nel grafico)
+    let mse-points = ()
+    for i in range(-60, 61) {
+      let x = i / 10.0
+      let y = (x * x) / 3.6
+      if y <= y-max {
+        mse-points.push((x, y))
+      }
+    }
+    line(..mse-points, stroke: (paint: blue, thickness: 2pt))
+
+    // Funzione MAE (V-shape): y = |x|
+    let mae-points = ()
+    for i in range(-60, 61) {
+      let x = i / 10.0
+      let y = calc.abs(x) * 1.5
+      if y <= y-max {
+        mae-points.push((x, y))
+      }
+    }
+    line(..mae-points, stroke: (paint: orange, thickness: 2pt, dash: "dashed"))
+
+    // Punto minimo evidenziato
+    circle((0, 0), radius: 0.08, fill: black, stroke: none)
+
+    // Legenda
+    rect((3.2, 8.5), (5.5, 9.8), fill: white, stroke: 0.5pt)
+    line((3.4, 9.4), (4, 9.4), stroke: (paint: blue, thickness: 2pt))
+    content((4.2, 9.4), text(size: 7pt, $"MSE"$), anchor: "west")
+    line((3.4, 8.9), (4, 8.9), stroke: (paint: orange, thickness: 2pt, dash: "dashed"))
+    content((4.2, 8.9), text(size: 7pt, $"MAE"$), anchor: "west")
+  }),
+  caption: [Confronto tra Mean Squared Error (MSE) e Mean Absolute Error (MAE). MSE penalizza quadraticamente gli errori (cresce rapidamente), mentre MAE penalizza linearmente (crescita costante).],
+)
 
 === Binary Cross-Entropy (BCE) Loss
 
@@ -552,7 +618,7 @@ $
 $
 
 #nota()[
-  Il modello deve produrre valori $hat(y)_i in [0,1]$, tipicamente ottenuti con una funzione *Sigmoid* all'output.
+  Siccome il modello produce dei valori $hat(y)_i in (-infinity,+infinity)$ (logits), viene applicata una funzione *Sigmoid* $sigma$ all'output del modello (non esiste il $log$ di numeri negativi). La sigmoide è una funzione con una forma ad `S`, che mappa un qualsiasi valore reale in un intervallo compreso tra $[0,1]$, aderendo così alle richieste della funzione di loss.
 ]
 
 ==== Concetto di Entropia
@@ -573,11 +639,23 @@ L'*entropia* è una misura informazionale che quantifica il "tasso di sorpresa" 
   Quando leggiamo una parola lettera per lettera, l'entropia quantifica la nostra "sorpresa" nel vedere la lettera successiva.
 ]
 
-==== Funzionamento della BCE
+Nella *BCE* per classificazione binaria:
+- *$y_i = 1$* (label $mg("vera")$):
+  Vogliamo che il modello fornisca una predizione $hat(y)_i approx 1$:
+  $
+    &= -(y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i))\
+    &= - 1 log(hat(y)_i) - (1-mg(1)) log(1-hat(y)_i)\
+    &= - log(hat(y)_i)
+  $
+  minimizziamo $-log hat(y)_i$
 
-Nella BCE per classificazione binaria:
-- Quando $y_i = 1$ (label vera): vogliamo $hat(y)_i approx 1$, quindi minimizziamo $-log hat(y)_i$
-- Quando $y_i = 0$ (label vera): vogliamo $hat(y)_i approx 0$, quindi minimizziamo $-log(1 - hat(y)_i)$
+- *$y_i = 0$* (label $mr("falsa")$): Vogliamo che il modello predica  $hat(y)_i approx 0$:
+$
+  &= -(y_i log(hat(y)_i) + (1-y_i) log(1-hat(y)_i))\
+  &= - (mr(0) log(hat(y)_i) + (1-mr(0)) log(1-hat(y)_i)) \
+  &=  - log(1-hat(y)_i)
+$
+ quindi minimizziamo $-log(1 - hat(y)_i)$
 
 La loss *penalizza fortemente* predizioni sbagliate con alta confidenza.
 
