@@ -854,8 +854,10 @@ $
 $
 
 Dove:
-- $mb(y)_(i,k) = cases(1 "se" k = y_i, 0 "altrimenti")$
-- La somma interna seleziona automaticamente solo la classe corretta
+- $
+  mb(y)_(i,k) = cases(1 "se" k = y_i, 0 "altrimenti")
+  $
+- La *somma interna seleziona automaticamente solo la classe corretta*
 
 #esempio()[
   Supponiamo $K = 3$ classi e l'esempio $i$-esimo ha label vera $y_i = 2$:
@@ -881,6 +883,8 @@ Dove:
   - Permette un'implementazione vettoriale efficiente
 ]
 
+== Inizializzazione dei pesi
+
 #attenzione()[
   *Obiettivo finale del training*:
 
@@ -895,32 +899,15 @@ Dove:
   - *Generalizza* bene su dati non visti (validation/test set)
 ]
 
-== Training e Ottimizzazione
-
-=== Inizializzazione dei pesi
-
 All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene *inizializzata casualmente*.
 
 #attenzione()[
   L'inizializzazione dei parametri è fondamentale per il successo del training. Esiste un'intera branca di ricerca che studia come inizializzare i parametri: *il set di pesi di partenza influenza fortemente come il modello evolve* durante l'addestramento.
 ]
 
+=== Strategie di Inizializzazione
 
-=== Inizializzazione dei Pesi
-
-All'inizio del training, i *parametri del modello* (pesi e bias) devono essere inizializzati. L'inizializzazione è *fondamentale* per il successo dell'addestramento.
-
-#attenzione()[
-  Una cattiva inizializzazione può:
-  - Far convergere il modello a minimi locali subottimali
-  - Causare *vanishing/exploding gradients*
-  - Rallentare significativamente il training
-  - Impedire completamente l'apprendimento
-]
-
-==== Strategie di Inizializzazione
-
-*Inizializzazione casuale semplice*: Non consigliata!
+*Inizializzazione casuale semplice*: *Non* consigliata
 - Valori troppo grandi: gradienti esplodono
 - Valori troppo piccoli: gradienti svaniscono
 - Tutti uguali (es. zero): simmetria non rotta, neuroni imparano la stessa cosa
@@ -965,6 +952,170 @@ All'inizio del training, i *parametri del modello* (pesi e bias) devono essere i
   - Evitano l'exploding gradient (segnale troppo grande)
   - Permettono un flusso stabile di informazione avanti e indietro
 ]
+
+= Neural Networks: Regression vs Classification
+
+Le reti neurali possono essere utilizzate per diversi tipi di predizioni: 
+- *Regressione*: predizione di valori continui (es. prezzo di una casa)
+- *Classificazione*: predizione di classi discrete (es. tipo di fiore)
+
+#nota()[
+  Anche se la struttura di base della rete, può sembrare simile, cambiano l'output layer e la funzione di loss:
+   - Nella *regressione*, l'output layer è tipicamente un layer lineare senza attivazione. 
+  - Nella *classificazione* l'output layer produce logits che vengono poi trasformati in probabilità tramite _softmax_. 
+  
+  La funzione di loss è *MSE* per la regressione e *Cross-Entropy* per la classificazione.
+]
+
+== Regressione
+
+Nel problema di regressione, l'obbiettivo è *predirre* un valore continuo *$y in R$*, dato un input $x in R^D$. Il modello impara la seguente funzione:
+$
+  f(x) tilde y
+$
+Il layer di output è tipicamente un layer lineare senza attivazione:
+$
+  hat(y) = f(x;w;b)
+$
+Inoltre l'output $hat(y)$ del modello *non* ha bound, in quanto si tratta di un valore continuio. La funzione di loss più comune è la *Mean Squared Error* (MSE) o *Mean Absolute Error* (MAE).
+
+== Classificazione
+
+Dato un vettore di input $x in R^D$, il problema di classificazione consiste nel predire una classe *$y in {1,2,...,K}$*, dove $K$ è il numero di classi.
+
+#nota()[
+  Valgono le seguenti assunzioni: 
+  - Le classi sono *disgiunte* e mutualmente esclusive (un esempio appartiene ad una sola classe)
+
+  - Lo spazio dell'input viene partizionato in *regioni di decisione* (decision boundaries) che separano le classi.
+
+  - I boundary tra le classi possono essere *lineari* o *non lineari* a seconda della complessità del modello e dei dati e prendono il nome di *decision surface*.
+]
+
+A loro volta i modelli di classificazione possono utilizzare due differenti approcci:
+- *Funzioni Discriminative*: Assegnano direttamente una classe $y$ ad un input $x$ (es. SVM, Decision Tree)
+- *Funzioni Discriminative probabilistiche*: Modellano la probabilità $P(C_k|x)$ e predicono la classe con la massima probabilità (es. Logistic Regression, Neural Networks)
+
+=== Funzioni Discriminative
+Una *funzione discriminativa* è un modello che mappa *direttamente* un input $x$ ad una classe $y$ senza modellare esplicitamente la distribuzione di probabilità. La funzione è così definita (caso *binario*):
+$
+  y(x): R^D -> R\
+  y(x) = w^T x + w_0
+$
+Dove la regole di decisione è definita come:
+- Se $y(x) > 0$, allora $x$ viene assegnato alla classe $C_1$.
+- Se $y(x) <= 0$, allora $x$ viene assegnato alla classe $C_2$.
+
+I modelli così definiti imparano a tracciare confini decisionali nello spazio degli input per separare le classi. Nel caso binario il *decision boundary* è definito da:
+$
+  y(x) = 0
+$
+Tale bound decisionale, corrisponde ad un iperpiano nello spazio degli input.
+
+#esempio()[
+  Consideriamo un classificatore lineare binario in 2D con:
+  - Vettore dei pesi: $w = vec(1, 1)$
+  - Bias: $w_0 = -3$
+
+  La funzione discriminativa è quindi:
+  $
+    y(x) = w^T x + w_0 = x_1 + x_2 - 3
+  $
+
+  Il *decision boundary* è l'insieme di punti dove $y(x) = 0$:
+  $
+    x_1 + x_2 - 3 = 0 space arrow.r.double space x_2 = 3 - x_1
+  $
+
+  Questa equazione rappresenta una *retta* nello spazio 2D. I punti vengono classificati come:
+  - $mb("Classe")$ $mb(C_1)$ se $y(x) > 0$ (regione blu: $x_1 + x_2 > 3$)
+  - $mr("Classe")$ $mr(C_2)$ se $y(x) <= 0$ (regione rossa: $x_1 + x_2 <= 3$)
+
+  #figure(
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Assi
+      line((0, 0), (5, 0), mark: (end: ">"))
+      content((5.3, 0), $x_1$)
+      line((0, 0), (0, 5), mark: (end: ">"))
+      content((0, 5.3), $x_2$)
+
+      // Griglia leggera
+      for i in range(1, 5) {
+        line((i, 0), (i, 5), stroke: (paint: gray.lighten(70%), thickness: 0.5pt))
+        line((0, i), (5, i), stroke: (paint: gray.lighten(70%), thickness: 0.5pt))
+      }
+
+      // Tacche
+      for i in range(1, 5) {
+        line((i, -0.1), (i, 0.1))
+        content((i, -0.3), text(size: 8pt, str(i)))
+        line((-0.1, i), (0.1, i))
+        content((-0.3, i), text(size: 8pt, str(i)))
+      }
+
+      // Regione C1 (y(x) > 0) - sfondo blu chiaro
+      let region1 = ((3, 0), (5, 0), (5, 5), (0, 5), (0, 3), (3, 0))
+      line(..region1, fill: blue.lighten(85%), stroke: none)
+
+      // Regione C2 (y(x) <= 0) - sfondo rosso chiaro
+      let region2 = ((0, 0), (3, 0), (0, 3), (0, 0))
+      line(..region2, fill: red.lighten(85%), stroke: none)
+
+      // Decision boundary: x2 = 3 - x1
+      line((0, 3), (3, 0), stroke: (paint: black, thickness: 2pt))
+      content((1.8, 1.5), text(size: 9pt, $y(x) = 0$), anchor: "south-east")
+
+      // Punti classe C1 (blu) - y(x) > 0
+      circle((3.5, 2.5), radius: 0.1, fill: blue, stroke: none)
+      circle((4, 1.5), radius: 0.1, fill: blue, stroke: none)
+      circle((2.5, 3), radius: 0.1, fill: blue, stroke: none)
+      circle((4.5, 3.5), radius: 0.1, fill: blue, stroke: none)
+      circle((3, 2), radius: 0.1, fill: blue, stroke: none)
+
+      // Punti classe C2 (rossi) - y(x) <= 0
+      circle((0.5, 0.5), radius: 0.1, fill: red, stroke: none)
+      circle((1.5, 0.8), radius: 0.1, fill: red, stroke: none)
+      circle((0.8, 1.5), radius: 0.1, fill: red, stroke: none)
+      circle((2, 0.5), radius: 0.1, fill: red, stroke: none)
+      circle((1, 1), radius: 0.1, fill: red, stroke: none)
+
+      // Etichette regioni
+      content((4, 4.5), text(size: 10pt, $mb(C_1)$), fill: blue)
+      content((0.7, 0.3), text(size: 10pt, $mr(C_2)$), fill: red)
+
+      // Freccia vettore normale w
+      line((1.5, 1.5), (2.2, 2.2), mark: (end: ">"), stroke: (paint: purple, thickness: 1.5pt))
+      content((2.4, 2.4), text(size: 9pt, $w$), fill: purple)
+    }),
+    caption: [Decision boundary per un classificatore lineare binario. La retta $x_1 + x_2 = 3$ separa lo spazio in due regioni. Il vettore $w$ è perpendicolare al boundary e punta verso la regione $C_1$.],
+  )
+
+  #nota()[
+    In spazi di dimensione superiore ($D > 2$), il decision boundary diventa un *iperpiano* di dimensione $D-1$. Il vettore dei pesi $w$ è sempre *perpendicolare* al boundary e definisce la direzione di massima variazione.
+  ]
+] 
+
+//aggiungi immagine
+
+Nel caso multiclasse, si utilizzano più funzioni discriminative per ogni classe e la classe predetta è quella con il valore più alto.
+
+
+
+
+=== Funzioni Discriminative probabilistiche
+
+
+
+
+
+
+
+
+
+//Spostare
+= Training e Ottimizzazione
 
 ==== Inizializzazione dei Bias
 
