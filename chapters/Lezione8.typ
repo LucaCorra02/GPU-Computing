@@ -55,8 +55,9 @@ $
 $
 Dove la funzione di attivazione viene è applicata *componente per componente*.
 
+
 #figure(
-  image("/assets/linear-classifier.png", width: 70%),
+  image("\assets\linear-classifier.png", width: 70%)
 )
 
 Nell'immagine di sinistra, tutti gli input $x$ convergono in un singolo neurone con funzione di attivazione $sigma$, producendo un singolo output. A destra, gli input si connettono a multipli neuroni output (uno per classe), ciascuno con la propria funzione di attivazione $sigma$, permettendo la classificazione in $K$ classi diverse..
@@ -1447,24 +1448,44 @@ yObs = xObs**3 - xObs**2 + 25 * torch.sin(2*xObs) + yNoise
 # Scatter plot of xObs vs yObs using Plotly
 plot_fun(x_scatter=xObs.numpy(), y_scatter=yObs.numpy())
 ```
-Creazione del datamodel:
+
+#nota()[
+  Il rumore $epsilon$ rappresenta le *imprecisioni* nelle misurazioni del mondo reale. Il modello non deve imparare il rumore, ma la *funzione sottostante* $f(x)$ che genera i dati.
+]
+
+\ *Creazione della classe Dataset*:
+
+In PyTorch, per gestire i dati in modo efficiente, creiamo una classe che eredita da `torch.utils.data.Dataset` e implementa tre metodi fondamentali:
+
 ```python
-class MLP(nn.Module):
-  def __init__(self, in_features, hidden_features, out_features):
-    super().__init__()
-    self.fc1 = nn.Linear(in_features, hidden_features)
-    self.fc2 = nn.Linear(hidden_features, out_features)
+from torch.utils.data import Dataset, DataLoader
 
-  def forward(self, x):
-    x = F.relu(self.fc1(x))
-    x = self.fc2(x)
-    return x
+class nonLinearRegressionData(Dataset):
+    def __init__(self, x, y):
+        """Inizializza il dataset con i dati x e y"""
+        self.x = x
+        self.y = y
+        
+    def __len__(self):
+        """Restituisce il numero di esempi nel dataset"""
+        return len(self.x)
+        
+    def __getitem__(self, idx):
+        """Restituisce l'esempio all'indice idx"""
+        return self.x[idx], self.y[idx]
 
-# instantiate Dataset object for current training data
+# Istanzia il Dataset con i dati osservati
 d = nonLinearRegressionData(xObs, yObs)
-# instantiate DataLoader
+
+# Crea il DataLoader per iterare sui dati in mini-batch
 train_dataloader = DataLoader(d, batch_size=25, shuffle=True)
 ```
+
+#nota()[
+  Il parametro `shuffle=True` è *fondamentale*: ad ogni epoca i dati vengono mescolati, evitando che il modello veda sempre gli esempi nello stesso ordine. Questo migliora la generalizzazione e previene l'overfitting.
+  
+  Con `batch_size=25`, il dataset da 200 esempi viene suddiviso in 8 batch (200/25=8). Ad ogni iterazione, il modello processa 25 esempi contemporaneamente.
+]
 \ *Modello*: 
 ```python
 nInput  = 1
@@ -1541,14 +1562,12 @@ y1 = y_pred.detach().numpy()
   #nota()[
     *Reshape* è necessario perché il modello si aspetta un input di forma `(batch_size, nInput)`, mentre `inputs` è un vettore 1D di forma `(batch_size,)`. Reshape a `(batch_size, 1)` consente al modello di processare correttamente i dati.
     
-    Nel caso di regressione, *non* è necessario applicare una *funzione di attivazione finale*, poiché stiamo predicendo valori continui.
+    Nel caso di regressione, *non* è necessario applicare una *funzione di attivazione finale*, poiché stiamo predicendo valori continui nell'intervallo $(-infinity, +infinity)$.
   ]
+
 ]
-
-
-// TODO: Aggiungere file (su portatile)
-=== Esempio: Classificazione multiclasse con MLP
-
+ 
+ 
 
 
 
