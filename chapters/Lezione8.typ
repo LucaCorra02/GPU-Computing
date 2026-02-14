@@ -1000,7 +1000,7 @@ A loro volta i modelli di classificazione possono utilizzare due differenti appr
 Una *funzione discriminativa* è un modello che mappa *direttamente* un input $x$ ad una classe $y$ senza modellare esplicitamente la distribuzione di probabilità. La funzione è così definita (caso *binario*):
 $
   y(x): R^D -> R\
-  y(x) = w^T x + w_0
+  y(x) = w^T x + b
 $
 Dove la regole di decisione è definita come:
 - Se $y(x) > 0$, allora $x$ viene assegnato alla classe $C_1$.
@@ -1015,11 +1015,11 @@ Tale bound decisionale, corrisponde ad un iperpiano nello spazio degli input.
 #esempio()[
   Consideriamo un classificatore lineare binario in 2D con:
   - Vettore dei pesi: $w = vec(1, 1)$
-  - Bias: $w_0 = -3$
+  - Bias: $b = -3$
 
   La funzione discriminativa è quindi:
   $
-    y(x) = w^T x + w_0 = x_1 + x_2 - 3
+    y(x) = w^T x + b = x_1 + x_2 - 3
   $
 
   Il *decision boundary* è l'insieme di punti dove $y(x) = 0$:
@@ -1065,7 +1065,7 @@ Tale bound decisionale, corrisponde ad un iperpiano nello spazio degli input.
 
       // Decision boundary: x2 = 3 - x1
       line((0, 3), (3, 0), stroke: (paint: black, thickness: 2pt))
-      content((1.8, 1.5), text(size: 9pt, $y(x) = 0$), anchor: "south-east")
+      content((3.3, 1.3), text(size: 9pt, $y(x) = 0$), anchor: "south-east")
 
       // Punti classe C1 (blu) - y(x) > 0
       circle((3.5, 2.5), radius: 0.1, fill: blue, stroke: none)
@@ -1097,430 +1097,47 @@ Tale bound decisionale, corrisponde ad un iperpiano nello spazio degli input.
   ]
 ] 
 
-//aggiungi immagine
-
-Nel caso multiclasse, si utilizzano più funzioni discriminative per ogni classe e la classe predetta è quella con il valore più alto.
-
-
-
+*Proprietà* di queste funzioni: 
+- Mapping diretto da input a classe
+- Non modellano esplicitamente la probabilità
+- Non forniscono una misura di confidenza nelle predizioni
+- Possono essere più semplici da addestrare in alcuni casi, ma meno flessibili rispetto a modelli probabilistici
 
 === Funzioni Discriminative probabilistiche
 
-
-
-
-
-
-
-
-
-//Spostare
-= Training e Ottimizzazione
-
-==== Inizializzazione dei Bias
-
-I bias sono tipicamente inizializzati a *zero*:
-```python
-nn.init.zeros_(layer.bias)
-```
-
-In alcuni casi specifici:
-- LSTM/GRU: bias dei gate di forget inizializzati a 1
-- Output layer: bias può essere inizializzato in base alle frequenze delle classi
-
-=== Processo di Training
-
-Il processo di training di una rete neurale segue questi passi:
-
-+ *Forward pass*: calcolo delle predizioni attraverso i layer
-  $
-    hat(mb(y)) = f(mb(x); theta)
-  $
-
-+ *Calcolo della loss*: valutazione dell'errore
-  $
-    L = L(hat(mb(y)), mb(y))
-  $
-
-+ *Backward pass*: calcolo dei gradienti tramite backpropagation
-  $
-    nabla_theta L
-  $
-
-+ *Aggiornamento parametri*: ottimizzazione (es. SGD, Adam)
-  $
-    theta <- theta - eta nabla_theta L
-  $
-
-/*
-#figura(
-  ```python
-  import fletcher as fl
-
-  fl.diagram(
-    node-stroke: 1pt,
-    node-fill: gradient.linear(..mo.colors),
-    spacing: (15mm, 10mm),
-    edge-stroke: 1pt,
-    {
-      let (input, forward, loss, backward, update, output) = ((0,0), (1,0), (2,0), (2,1), (1,1), (0,1))
-
-      fl.node(input, [Input \ $mb(x), mb(y)$], corner-radius: 5pt, extrude: (0, 3))
-      fl.node(forward, [Forward \ Pass], corner-radius: 5pt)
-      fl.node(loss, [Loss \ $L$], corner-radius: 5pt, fill: mr)
-      fl.node(backward, [Backward \ Pass], corner-radius: 5pt)
-      fl.node(update, [Update \ $theta$], corner-radius: 5pt, fill: mg)
-
-      fl.edge(input, forward, "->", [Batch])
-      fl.edge(forward, loss, "->", [$hat(mb(y))$])
-      fl.edge(loss, backward, "->", [Gradiente])
-      fl.edge(backward, update, "->", [$nabla_theta L$])
-      fl.edge(update, forward, "->", [Parametri\naggiornati], label-pos: 0.3)
-    }
-  )
-  ```
-  caption: [Ciclo di training di una rete neurale: forward pass, calcolo loss, backward pass, aggiornamento parametri]
-)
-*/
-#nota()[
-  PyTorch automatizza il calcolo dei gradienti (punto 3) tramite *autograd*, permettendo di concentrarsi sulla definizione del modello e della loss.
-]
-
-=== Ottimizzatori
-
-Gli *ottimizzatori* implementano algoritmi per aggiornare i parametri $theta$ in base ai gradienti calcolati.
-
-==== Stochastic Gradient Descent (SGD)
-
-L'ottimizzatore più semplice:
+Questo tipo di modelli, invece di assegnare direttamente una classe, modellano la probabilità *$P(C_k|x)$* per ogni classe $C_k$ dato l'input $x$. La predizione finale è la classe con la massima probabilità:
 $
-  theta_(t+1) = theta_t - eta nabla_theta L(theta_t)
+  hat(y) = arg max_k P(C_k | x)
 $
+I parametri del modello vengono appresi massimizzando la probabilità dei dati osservati (*massimizzazione della verosimiglianza*) o minimizzando la Cross-Entropy Loss.
 
-dove $eta$ è il *learning rate*.
-
-```python
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-```
-
-*Variante con momentum*:
+Per quanto riguarda il layer di output, è necessario che produca dei *logits* (valori reali arbitrari) che vengono poi trasformati in probabilità tramite la funzione *Softmax*:
+- *Caso binario*: viene utilizzata una funzione *Sigmoid* per mappare i logits in probabilità 
 $
-      v_(t+1) & = gamma v_t + eta nabla_theta L(theta_t) \
-  theta_(t+1) & = theta_t - v_(t+1)
+  p(C_1 | x ) = sigma(w^T x)
 $
-
-```python
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-```
+- *Caso multiclasse*: viene utilizzata la funzione *Softmax* per ottenere una distribuzione di probabilità su tutte le classi:
+$
+  P(C_k | x) = "softmax"(W x)_k 
+$
 
 #nota()[
-  Il *momentum* aiuta ad accelerare la convergenza e superare minimi locali accumulando una "velocità" nella direzione dei gradienti passati.
+  Questi modelli forniscono non solo una predizione di classe, ma anche una stima della *confidenza* in quella predizione (la probabilità associata). Questo è particolarmente utile in molte applicazioni reali dove è importante sapere quanto il modello è sicuro delle sue predizioni.
 ]
 
-==== Adam (Adaptive Moment Estimation)
+== Applicazione in Pytorch
 
-Uno degli ottimizzatori più usati, combina:
-- *Momentum*: media mobile dei gradienti
-- *RMSprop*: adatta il learning rate per ogni parametro
+=== Dataloader
 
-```python
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
-```
 
-*Vantaggi di Adam*:
-- Convergenza veloce
-- Poco sensibile alla scelta del learning rate iniziale
-- Adatta automaticamente il learning rate per ogni parametro
-- Funziona bene nella maggior parte dei casi
 
-#esempio()[
-  *Setup tipico per training*:
-  ```python
-  model = MyModel()
-  criterion = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-  for epoch in range(num_epochs):
-      for batch_x, batch_y in dataloader:
-          # Forward pass
-          outputs = model(batch_x)
-          loss = criterion(outputs, batch_y)
+=== Esempio: Regressione non lineare con MLP
 
-          # Backward pass
-          optimizer.zero_grad()  # Reset gradienti
-          loss.backward()        # Calcolo gradienti
-          optimizer.step()       # Aggiornamento parametri
-  ```
-]
+=== Esempio: Classificazione multiclasse con MLP
 
-==== Altri Ottimizzatori
 
-*AdamW*: Variante di Adam con weight decay corretto
-```python
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
-```
 
-*RMSprop*: Adatta il learning rate usando media mobile dei gradienti al quadrato
-```python
-optimizer = torch.optim.RMSprop(model.parameters(), lr=0.01)
-```
 
-#attenzione()[
-  *Scelta dell'ottimizzatore*:
-  - *Adam/AdamW*: scelta sicura per la maggior parte dei problemi
-  - *SGD con momentum*: può generalizzare meglio con tuning accurato
-  - *RMSprop*: buono per RNN e problemi con gradienti variabili
-]
 
-=== Learning Rate e Scheduling
 
-Il *learning rate* $eta$ è uno degli iperparametri più importanti:
-- Troppo alto: divergenza, oscillazioni
-- Troppo basso: convergenza lenta, minimi locali
-
-==== Learning Rate Scheduling
-
-Modificare il learning rate durante il training:
-
-*Step Decay*: Riduce $eta$ ogni $N$ epoche
-```python
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-```
-
-*Cosine Annealing*: Riduce $eta$ seguendo una curva coseno
-```python
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
-```
-
-*ReduceLROnPlateau*: Riduce $eta$ quando la loss smette di migliorare
-```python
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
-                                                        factor=0.5, patience=5)
-```
-
-#esempio()[
-  *Uso dello scheduler*:
-  ```python
-  for epoch in range(num_epochs):
-      train_one_epoch(model, optimizer, criterion, train_loader)
-      val_loss = validate(model, criterion, val_loader)
-
-      # Aggiorna learning rate
-      scheduler.step(val_loss)  # per ReduceLROnPlateau
-      # oppure scheduler.step() per altri scheduler
-  ```
-]
-
-== Regolarizzazione e Prevenzione dell'Overfitting
-
-Le tecniche di *regolarizzazione* aiutano il modello a *generalizzare* meglio su dati non visti, prevenendo l'*overfitting*.
-
-=== Weight Decay (L2 Regularization)
-
-Aggiunge un termine di penalizzazione alla loss per limitare la magnitudine dei pesi:
-$
-  L_"total" = L_"task" + lambda/2 sum_i theta_i^2
-$
-
-dove $lambda$ è il *coefficiente di regolarizzazione*.
-
-```python
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)
-```
-
-#nota()[
-  *Effetto*: pesi più piccoli rendono il modello meno sensibile a piccole variazioni nell'input, migliorando la generalizzazione.
-]
-
-=== Dropout
-
-Durante il training, *disattiva casualmente* una frazione $p$ di neuroni:
-- Ogni neurone ha probabilità $p$ di essere "spento" (output = 0)
-- A ogni iterazione, diversi neuroni sono attivi
-- Durante l'inferenza, tutti i neuroni sono attivi (con scaling)
-
-/*
-```python
-class ModelWithDropout(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(784, 256)
-        self.dropout1 = nn.Dropout(p=0.5)  # 50% dropout
-        self.fc2 = nn.Linear(256, 128)
-        self.dropout2 = nn.Dropout(p=0.3)  # 30% dropout
-        self.fc3 = nn.Linear(128, 10)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = self.dropout1(x)  # Applicato solo in training
-        x = F.relu(self.fc2(x))
-        x = self.dropout2(x)
-        return self.fc3(x)
-```
-*/
-
-#nota()[
-  *Perché funziona?*
-  - Impedisce ai neuroni di co-adattarsi troppo
-  - Equivale a fare ensemble di tante reti diverse
-  - Riduce l'overfitting forzando ridondanza
-]
-
-#attenzione()[
-  Ricordarsi di mettere il modello in modalità corretta:
-  ```python
-  model.train()  # Training: dropout attivo
-  model.eval()   # Inferenza: dropout disattivo
-  ```
-]
-
-=== Batch Normalization
-
-Normalizza le attivazioni di ogni layer durante il training:
-$
-  hat(x) = (x - mu_cal(B))/sqrt(sigma_cal(B)^2 + epsilon)
-$
-
-dove $mu_cal(B)$ e $sigma_cal(B)$ sono media e varianza del batch.
-
-```python
-class ModelWithBatchNorm(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(784, 256)
-        self.bn1 = nn.BatchNorm1d(256)
-        self.fc2 = nn.Linear(256, 128)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.fc3 = nn.Linear(128, 10)
-
-    def forward(self, x):
-        x = self.bn1(F.relu(self.fc1(x)))
-        x = self.bn2(F.relu(self.fc2(x)))
-        return self.fc3(x)
-```
-
-*Vantaggi*:
-- Permette learning rate più alti
-- Riduce la dipendenza dall'inizializzazione
-- Ha effetto regolarizzante
-- Accelera la convergenza
-
-#nota()[
-  *Ordine tipico dei layer*:
-  ```
-  Linear -> BatchNorm -> Activation (ReLU) -> Dropout
-  ```
-
-  (Anche se l'ordine BatchNorm/Activation è dibattuto)
-]
-
-=== Early Stopping
-
-Interrompe il training quando la *validation loss* smette di migliorare:
-
-```python
-best_val_loss = float('inf')
-patience = 10  # Numero di epoche senza miglioramento
-patience_counter = 0
-
-for epoch in range(max_epochs):
-    train_loss = train_one_epoch(...)
-    val_loss = validate(...)
-
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        patience_counter = 0
-        # Salva il modello migliore
-        torch.save(model.state_dict(), 'best_model.pth')
-    else:
-        patience_counter += 1
-
-    if patience_counter >= patience:
-        print(f"Early stopping at epoch {epoch}")
-        break
-```
-
-#nota()[
-  *Previene overfitting* interrompendo prima che il modello cominci a memorizzare i dati di training.
-]
-
-=== Data Augmentation
-
-Per problemi di visione, aumenta artificialmente il dataset:
-- Rotazioni, traslazioni, flip
-- Crop casuali
-- Variazioni di colore/contrasto
-- Mixup, CutMix (tecniche più avanzate)
-
-```python
-from torchvision import transforms
-
-train_transform = transforms.Compose([
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225])
-])
-```
-
-== Monitoraggio e Debugging
-
-=== Metriche di Valutazione
-
-Oltre alla loss, monitoriamo metriche interpretabili:
-
-*Classificazione*:
-- *Accuracy*: percentuale di predizioni corrette
-- *Precision, Recall, F1-score*: per classi sbilanciate
-- *Confusion Matrix*: errori per classe
-
-*Regressione*:
-- *MAE, RMSE*: errori medi
-- *R²*: varianza spiegata
-
-```python
-def compute_accuracy(outputs, labels):
-    _, predictions = torch.max(outputs, dim=1)
-    correct = (predictions == labels).sum().item()
-    return correct / labels.size(0)
-```
-
-=== Curve di Apprendimento
-
-Visualizzare training e validation loss/accuracy:
-
-#nota()[
-  *Interpretazione delle curve*:
-  - *Underfitting*: train e val loss entrambe alte
-  - *Overfitting*: train loss bassa, val loss alta e crescente
-  - *Buon fit*: train e val loss entrambe basse e vicine
-]
-
-=== Problemi Comuni
-
-*Loss non diminuisce*:
-- Learning rate troppo basso o alto
-- Inizializzazione sbagliata
-- Bug nel codice (gradienti non calcolati)
-- Normalizzazione dati mancante
-
-*Loss diventa NaN*:
-- Learning rate troppo alto (gradienti esplodono)
-- Divisione per zero o log(0)
-- Overflow numerico
-
-*Overfitting*:
-- Modello troppo complesso per i dati
-- Dati di training insufficienti
-- Mancano tecniche di regolarizzazione
-
-#attenzione()[
-  *Debugging checklist*:
-  + Verifica shape dei tensori
-  + Controlla che i gradienti siano calcolati (`loss.backward()`)
-  + Verifica che l'ottimizzatore aggiorni i parametri
-  + Testa su un batch piccolo (overfit intenzionale)
-  + Visualizza le attivazioni e i gradienti
-]
