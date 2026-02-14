@@ -1129,7 +1129,273 @@ $
 
 === Dataloader
 
+I Database _reali_, possono presentare una serie di problematiche, tra cui: 
+- Dati mancanti
+- Dati non bilanciati
+- Troppo grandi
 
+Per questo motivo effettuare il *training sull'intero dataset* potrebbe essere *inefficiente* o addirittura impossibile. Per risolvere questo problema, si utilizza un *dataloader* che permette di caricare i dati in *mini-batch* durante il training. Lo schema di training diventa quindi:
+$
+  "Dataset" -> "(Sample / Subset)" -> "Dataloader" -> "Model Training"
+$
+Il dataloader si occupa di:
+- Caricare i dati in mini-batch
+- Shufflare i dati ad ogni epoca
+- Gestire l'iterazione sui dati durante il training
+
+#nota()[
+  La gestione dei dati a *batch* offre inoltre una serie di vantaggi in termini computazionali e di stabilità del training, come:
+  - *Efficienza computazionale*: permette di sfruttare l'accelerazione hardware (GPU) e di parallelizzare le operazioni
+  - *Stabilità del training*: l'uso di mini-batch introduce una forma di rumore che può aiutare a evitare minimi locali e migliorare la generalizzazione, il modello non impara a memoria i dati, ma impara a generalizzare su di essi.
+]
+
+In PyTorch, la classe `DataLoader` è utilizzata per creare un iteratore che fornisce i dati in mini-batch durante il training. Esempio di utilizzo:
+```python
+from torch.utils.data import DataLoader
+
+loader = DataLoader(dataset, batch_size=32, shuffle=True)
+for x, y in loader:
+```
+Argomenti principali:
+- `dataset`: un oggetto che implementa l'interfaccia di dataset di PyTorch (es. `torch.utils.data.Dataset`)
+- `batch_size`: numero di esempi per batch. Batch più grandi possono accelerare il training, meno grafdienti rumorosi, ma richiedono più memoria. Batch più piccoli possono essere più stabili, ma più lenti.
+- `shuffle`: se _True_, i dati vengono mescolati ad ogni epoca
+- `pin__memory`: se _True_, i dati vengono caricati in memoria pinned (utile per GPU)
+
+
+
+#nota()[
+  Una *iterazione completa sui dati* prende il nome di *epoca* (epoch). Ad ogni epoca, i dati vengono shufflati (se `shuffle=True`) per garantire che il modello non veda sempre gli stessi esempi nello stesso ordine, migliorando così la generalizzazione.
+]
+
+=== torch.nn vs torch.nn.functional 
+
+In PyTorch, esistono due moduli principali per definire le operazioni nei modelli: `torch.nn` e `torch.nn.functional`.
+
+#informalmente()[
+  La matematica implementata sottostante è la stessa. Le due classi differiscono per , design e convenzioni di utilizzo.
+]
+
+*`torch.nn`*: Si tratta di un modulo orientato agli *oggetti* che fornisce classi per definire layer, moduli e funzioni di attivazione. Queste classi gestiscono automaticamente i parametri (pesi e bias) e la loro inizializzazione (funzionano molto bene con il sistema di ottimizzazione di PyTorch). Esempio:
+```python
+import torch.nn as nn
+self.fc = nn.Linear(10, 5)
+```
+Modulo utilizzato principalmente per definire la *struttura* del *modello*, creando classi che ereditano da `nn.Module` e definendo i layer come attributi della classe.
+
+*`torch.nn.functional`*: Si tratta di un modulo *stateless* orientato alle *funzioni* che fornisce funzioni per operazioni di basso livello, come convoluzioni, attivazioni, funzioni di perdita, ecc. Queste funzioni *non gestiscono i parametri* e devono essere chiamate esplicitamente all'interno del metodo `forward` del modello. Esempio:
+```python
+import torch.nn.functional as F 
+def forward(self, x):
+  x = F.relu(self.fc(x))
+```
+#nota()[
+  Lavorano direttamente sui tensori e sono più flessibili, ma richiedono una gestione manuale dei parametri. Vengono utilizzate principalmente per definire la *logica* del *forward pass* del modello, applicando le operazioni sui dati in ingresso.
+]
+
+Quando usare `torch.nn`:
+- Layer con parametri apprendibili (es. `nn.Linear`, `nn.Conv2d`)
+- Modelli modulari e riutilizzabili
+
+Quando usare `torch.nn.functional`:
+- Operazioni stateless (es. `F.relu`, `F.softmax`)
+- Controllo di finefine nel forward pass
+
+#nota()[
+  Solitamente vine utilizzato un mix di entrambi: `torch.nn` per definire i layer e `torch.nn.functional` per applicare le funzioni di attivazione e altre operazioni sui dati. 
+  
+  *Pattern comune*:
+  ```python
+  class Net(nn.Module):
+    def __init__(self): #torch.nn
+      super().__init__()
+      self.fc = nn.Linear(10, 5)
+
+    def forward(self, x): #torch.nn.functional
+      return F.relu(self.fc(x))
+  ```
+
+]
+
+=== Struttura tipica di un modello di classificazione
+
+Solitamente vien utilizzata la seguente pipeline per definire un modello di classificazione in PyTorch:
+  1. Load & preprocess data
+  2. Wrap data in Dataset / DataLoader
+  3. Define nn.Module
+  4. Select loss + optimizer
+  5. Train loop (forward → loss → backward → step)
+  6. Evaluate with model.eval()
+  7. Save / deploy model
+
+La seguente tabella riassume le differenze principali tra classificazione binaria e multiclasse in termini di architettura della rete:
+
+#figure(
+  table(
+    columns: 3,
+    align: (left, left, left),
+    stroke: 0.5pt,
+    [*Iperparametro*], [*Classificazione Binaria*], [*Classificazione Multiclasse*],
+    [Input layer shape\ (`in_features`)], [Uguale al numero\ di features], [Uguale al caso binario],
+    [Hidden layer(s)], [Problema specifico\ (spesso min 1, max illimitato)], [Uguale al caso binario],
+    [Neuroni per\ hidden layer], [Problema specifico\ (tipicamente 10-512)], [Uguale al caso binario],
+    [Output layer shape\ (`out_features`)], [1], [1 per classe\ ($K$ neuroni)],
+    [Hidden activation], [Solitamente ReLU], [Uguale al caso binario],
+    [Output activation], [Sigmoid\ (`torch.sigmoid`)], [Softmax\ (`torch.softmax`)],
+    [Loss function], [BCE\ (`nn.BCEWithLogitsLoss`\ o `nn.BCELoss`)], [Cross-Entropy\ (`nn.CrossEntropyLoss`)],
+  ),
+  caption: [Confronto tra architetture per classificazione binaria e multiclasse],
+  kind: table,
+)
+
+#nota()[
+  Le principali differenze tra classificazione binaria e multiclasse riguardano:
+  - *Output layer*: 1 neurone (binario) vs $K$ neuroni (multiclasse)
+  - *Funzione di attivazione finale*: Sigmoid (binario) vs Softmax (multiclasse)
+  - *Funzione di loss*: BCE (binario) vs Cross-Entropy (multiclasse)
+
+  Gli *hidden layers* mantengono la stessa struttura in entrambi i casi, poiché la complessità della rete dipende dal problema specifico, non dal tipo di classificazione.
+]
+
+=== Valutazione del Modello
+
+Durante la fase di valutazione di un modello di classificazione, è fondamentale monitorare diverse metriche per capire se il modello sta apprendendo correttamente o se presenta problemi.
+
+==== Riconoscere l'Underfitting
+
+L'*underfitting* si verifica quando il modello è *troppo semplice* per catturare i pattern nei dati. Segnali di underfitting:
+
+*Accuratezza vicina al caso*:
+- Se l'accuratezza si attesta intorno al 50% su dati bilanciati binari (o $1/K$ per $K$ classi), il modello sta effettuando *predizioni casuali*
+- Il modello non ha imparato nulla di significativo dai dati
+
+*Decision boundary inadeguati*:
+- Per dati con struttura circolare o non lineare, un modello puramente lineare tende a tracciare confini decisionali rettilinei
+- Questi boundary lineari *non riescono* a separare correttamente le classi
+
+#esempio()[
+  Consideriamo un dataset con due classi disposte in cerchi concentrici:
+  - Classe $C_1$: punti al centro (cerchio interno)
+  - Classe $C_2$: punti intorno (anello esterno)
+
+  Un classificatore lineare traccerebbe una retta di separazione, che *inevitabilmente* classificherebbe male molti punti indipendentemente dall'orientamento della retta. L'accuratezza rimarrebbe bassa (~50%) perché la struttura dei dati è intrinsecamente non lineare.
+]
+
+*Visualizzazione dei decision boundaries*:
+
+Per diagnosticare problemi di underfitting, è utile visualizzare i confini decisionali appresi dal modello. In PyTorch, possiamo creare una funzione helper:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_decision_boundary(model, X, y):
+    """
+    Visualizza il decision boundary di un modello di classificazione
+    
+    Args:
+        model: modello PyTorch addestrato
+        X: input features (numpy array o tensor)
+        y: labels (numpy array o tensor)
+    """
+    # Converti a numpy se necessario
+    if torch.is_tensor(X):
+        X = X.cpu().numpy()
+    if torch.is_tensor(y):
+        y = y.cpu().numpy()
+    
+    # Crea una griglia di punti
+    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),
+                         np.linspace(y_min, y_max, 100))
+    
+    # Predizioni sulla griglia
+    model.eval()
+    with torch.no_grad():
+        grid_points = torch.FloatTensor(np.c_[xx.ravel(), yy.ravel()])
+        predictions = model(grid_points)
+        
+        # Per classificazione binaria
+        if predictions.shape[1] == 1:
+            Z = torch.sigmoid(predictions).numpy().reshape(xx.shape)
+        # Per classificazione multiclasse
+        else:
+            Z = torch.argmax(predictions, dim=1).numpy().reshape(xx.shape)
+    
+    # Plot
+    plt.contourf(xx, yy, Z, alpha=0.3, cmap='RdYlBu')
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap='RdYlBu', edgecolors='k')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.title('Decision Boundary')
+    plt.show()
+```
+
+==== Migliorare un Modello (Lato Architettura)
+
+Quando un modello presenta underfitting o performance non soddisfacenti, possiamo intervenire sull'*architettura* modificando diversi iperparametri:
+
+*1. Aumentare la profondità (più layer)*
+
+Aggiungere più livelli nascosti alla rete aumenta la sua capacità di apprendere rappresentazioni gerarchiche. Risultato:
+  - *$mg("Vantaggi")$*: Maggiore capacità espressiva, rappresentazioni più astratte
+
+  - *$mr("Svantaggi")$*: Più parametri da apprendere, rischio di overfitting, training più lento
+
+*2. Aumentare la larghezza (più neuroni per layer)*
+
+Incrementare il numero di unità nascoste in ogni layer. Risultato:
+  - *$mg("Vantaggi")$*: Più capacità all'interno dello stesso livello, spesso più veloce da trainare rispetto ad aggiungere profondità
+
+  - *$mr("Svantaggi")$*: Aumenta significativamente il numero di parametri (crescita quadratica)
+
+*3. Trainare più a lungo (più epoche)*
+
+Se la loss continua a diminuire, il modello sta ancora imparando. Risultato:
+  - *$mg("Vantaggi")$*: Permette al modello di convergere verso un minimo migliore
+
+  - *$mr("Svantaggi")$*: Rischio di overfitting se si traina troppo a lungo, aumento del tempo di addestramento
+
+*4. Cambiare funzioni di attivazione*
+
+Le funzioni di attivazione introducono *non-linearità*, essenziali per apprendere pattern complessi. Risultato:
+  - *$mg("Vantaggi")$*: Permette di apprendere decision boundaries non lineari, migliora la capacità espressiva
+
+  - *$mr("Svantaggi")$*: Alcune funzioni (es. sigmoid) possono causare vanishing gradient, altre (es. ReLU) possono causare neuroni morti
+
+
+*Funzioni comuni*:
+- `F.relu()`: standard, veloce, efficace
+- `F.leaky_relu()`: evita "neuroni morti"
+- `F.gelu()`: usata in Transformer
+- `torch.tanh()`: output in [-1, 1]
+- `torch.sigmoid()`: output in [0, 1]
+
+#attenzione()[
+  *Senza funzioni di attivazione*, anche una rete profonda è equivalente a un singolo layer lineare! Le attivazioni sono *fondamentali* per la capacità espressiva della rete.
+  
+  Matematicamente: $f(x) = W_2(W_1 x) = (W_2 W_1)x = W_"combined" x$ (composizione di trasformazioni lineari = trasformazione lineare)
+]
+
+==== Strategia di Tuning
+
+Un approccio sistematico per migliorare un modello:
+
+1. *Baseline*: Inizia con un modello semplice (1-2 layer, pochi neuroni)
+2. *Diagnosi*: 
+   - Underfitting? → Aumenta capacità (più layer/neuroni, più epoche)
+   - Overfitting? → Regolarizzazione (dropout, weight decay, early stopping)
+3. *Iterazione*: Modifica un iperparametro alla volta e osserva gli effetti
+4. *Validazione*: Valuta sempre su un validation set separato
+
+#nota()[
+  *Trade-off fondamentale*:
+  - Modelli più grandi/profondi → maggiore capacità → rischio overfitting
+  - Modelli più piccoli/superficiali → minore capacità → rischio underfitting
+  
+  L'obiettivo è trovare il giusto bilanciamento per il problema specifico.
+]
 
 
 === Esempio: Regressione non lineare con MLP
