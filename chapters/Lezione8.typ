@@ -1400,6 +1400,153 @@ Un approccio sistematico per migliorare un modello:
 
 === Esempio: Regressione non lineare con MLP
 
+#esempio()[
+  Dato un dataset di punti 2D: 
+  $
+    {(x_i, y_i)}_(i=1)^N
+  $
+  Dove: 
+  - $x_i in R$ (*coordinata x* del punto)
+  - $y_i in R$ (valori reali da predire, corrispondenti alla *coordinata y* del punto)
+
+I valori di input seguono una distribuzione uniforme $x_i tilde U([-2,2])$ e sono distributi seguendo una funzione non lineare:
+$
+  y = f(x) = x^3 - 2.5 x^2 + 25 sin(2x) + epsilon
+$
+Dove $epsilon$ è un rumore gaussiano con media zero e deviazione standard 3: $epsilon tilde N(0, sigma^2)$
+
+L'obiettivo è addestrare un MLP (Multi-Layer Perceptron) per apprendere la funzione $f(x)$ e predire i valori di $y$ dati i punti $x$. Il modello avrà le seguini caratteristiche:
+- *Input layer*: 1 neurone (per la coordinata $x$)
+- *Hidden layer*: 1 o più layer con un certo numero di neuroni (es. 10)
+- *Output layer*: 1 neurone (per predire la coordinata $y$)
+
+La funzione di loss utilizzata sarà la *Mean Squared Error* (MSE) e l'ottimizzatore sarà *Adam* con un learning rate di $1e-4$. Il modello verrà addestrato per 10.000 epoche, monitorando la loss durante il processo di training.
+
+\ *Dataset*:
+
+Creazioni dei dati raw:
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# Define the function
+def fun(x):
+  return x**3 - 2.5 * x**2 + 25 * np.sin(2 * x)
+
+# generate data with noise
+n = 200 # number of observations
+
+# get noise around y observations
+yNormal = torch.distributions.Normal(loc=0.0, scale=10)
+yNoise = yNormal.sample([n])
+# get observations
+xObs = 10*torch.rand([n])-5 # uniform from [-5,5]
+yObs = xObs**3 - xObs**2 + 25 * torch.sin(2*xObs) + yNoise
+
+# Scatter plot of xObs vs yObs using Plotly
+plot_fun(x_scatter=xObs.numpy(), y_scatter=yObs.numpy())
+```
+Creazione del datamodel:
+```python
+class MLP(nn.Module):
+  def __init__(self, in_features, hidden_features, out_features):
+    super().__init__()
+    self.fc1 = nn.Linear(in_features, hidden_features)
+    self.fc2 = nn.Linear(hidden_features, out_features)
+
+  def forward(self, x):
+    x = F.relu(self.fc1(x))
+    x = self.fc2(x)
+    return x
+
+# instantiate Dataset object for current training data
+d = nonLinearRegressionData(xObs, yObs)
+# instantiate DataLoader
+train_dataloader = DataLoader(d, batch_size=25, shuffle=True)
+```
+\ *Modello*: 
+```python
+nInput  = 1
+nHidden = 10
+nOutput = 1
+
+# net model: MLP
+class MLP(nn.Module):
+    def __init__(self, nInput, nHidden, nOutput):
+        super(MLP, self).__init__()
+        self.nInput  = nInput
+        self.nHidden = nHidden
+        self.nOutput = nOutput
+        self.linear1 = nn.Linear(self.nInput, self.nHidden)
+        self.linear2 = nn.Linear(self.nHidden, self.nHidden)
+        self.linear3 = nn.Linear(self.nHidden, self.nHidden)
+        self.linear4 = nn.Linear(self.nHidden, self.nOutput)
+        self.ReLU    = nn.ReLU()
+
+    def forward(self, x):
+        h1 = self.ReLU(self.linear1(x))
+        h2 = self.ReLU(self.linear2(h1))
+        h3 = self.ReLU(self.linear3(h2))
+        output = self.linear4(h3)
+        return(output)
+
+
+model = MLP(nInput, nHidden, nOutput)
+```
+
+\ Training loop:
+```python
+loss_fn = nn.MSELoss()
+n_epochs = 10000
+
+def train_MLP(model, n_epochs, train_dataloader, loss_fn):
+    # Define the loss function and optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    nTrainSteps = n_epochs
+
+    # Run the training loop
+    for epoch in range(0, nTrainSteps):
+        # Set current loss value
+        current_loss = 0.0
+        # Iterate over the DataLoader for training data
+        for i, data in enumerate(train_dataloader, 0):
+            # Get inputs
+            inputs, targets = data
+            # Zero the gradients
+            optimizer.zero_grad()
+            # Perform forward pass (make sure to supply the input in the right way)
+            outputs = model(torch.reshape(inputs, (len(inputs), 1)))
+            # Compute loss
+            loss = loss_fn(outputs, targets)
+            # Perform backward pass
+            loss.backward()
+            # Perform optimization
+            optimizer.step()
+            # Print statistics
+            current_loss += loss.item()
+        if (epoch + 1) % 1000 == 0:
+            print('Loss after epoch %5d: %.3f' %
+                    (epoch + 1, current_loss))
+            current_loss = 0.0
+    # Process is complete.
+    print('Training process has finished.')
+
+train_MLP(model, n_epochs, train_dataloader, loss_fn)
+y_pred = model(x.unsqueeze(1)).squeeze()
+x1 = x.detach().numpy()
+y1 = y_pred.detach().numpy()
+```
+
+  #nota()[
+    *Reshape* è necessario perché il modello si aspetta un input di forma `(batch_size, nInput)`, mentre `inputs` è un vettore 1D di forma `(batch_size,)`. Reshape a `(batch_size, 1)` consente al modello di processare correttamente i dati.
+    
+    Nel caso di regressione, *non* è necessario applicare una *funzione di attivazione finale*, poiché stiamo predicendo valori continui.
+  ]
+]
+
+
+// TODO: Aggiungere file (su portatile)
 === Esempio: Classificazione multiclasse con MLP
 
 
