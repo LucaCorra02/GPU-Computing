@@ -416,10 +416,8 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
   $
     d^* = -(nabla f(x_0))/(||nabla f(x_0)||)
   $
-  
+
 ]
-
-
 
 #nota()[
   *Conclusione*: Muoversi nella direzione $-nabla f(x_0)$ garantisce la *massima riduzione* della funzione $f$ in un intorno di $x_0$.
