@@ -376,14 +376,18 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
 ]
 
 #dimostrazione()[
+  L'obbiettivo della dimostrazione è trovare una direzione unitaria $d$ che minimizza la funzione $f$ localmente intorno a $x_0$.
+
   Per la dimostrazione è necessario considerare lo *sviluppo di Taylor* al primo ordine di $f$ intorno a $x_0$:
   $
     f(x_0 + alpha d) approx f(x_0) + alpha nabla f(x_0)^T d
   $
-
   dove:
   - $d$ è una direzione unitaria ($||d|| = 1$)
   - $alpha > 0$ è uno step size piccolo
+
+
+  La nuova _altezza_  della funzione dopo il passo ($f(x_0 + alpha d)$) è data dalla vecchia altezza ($f(x_0)$) più un termine di variazione ($alpha nabla f(x_0)^T d$).
 
   #nota()[
     Lo sviluppo di Taylor ci dice che per piccoli spostamenti $alpha d$ da $x_0$, la funzione cambia approssimativamente di:
@@ -391,27 +395,28 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
       Delta f approx alpha nabla f(x_0)^T d
     $
   ]
+  Per scendere al massimo nella funzione, vogliamo che questo _cambiamento_ sia il numero più negativo possibile. Siccome $alpha$ è positivo e fisso, tutto dipende dal Prodotto Scalare tra il gradiente e la tua direzione:
+  $
+    nabla f(x_0)^T d
+  $
+  Il prodotto scalare tra due vettori geometricamente può essere calcolato come.
+  $
+    u dot v = ||u|| dot ||v|| dot cos(theta)
+  $
+  Applicando la proprietà del prodotto scalare al nostro caso:
+  $
+    nabla f(x_0)^T d = ||nabla f(x_0)|| dot ||d|| dot cos(theta)
+  $
+  Dove:
+  - $||d|| = 1$ (direzione unitaria)
+  - $||nabla f(x_0)||$ è un numero fisso.
 
-  Vogliamo trovare la direzione $d^*$ che *minimizza* $f(x_0 + alpha d)$, ovvero che rende $Delta f$ il più negativo possibile:
-  $
-    d^* = arg min_(||d||=1) nabla f(x_0)^T d
-  $
+  L'unica variabile è $cos(theta)$, che dipende dall'angolo tra il gradiente e la direzione $d$. Siccome il valore minimo del coseno vale $-1$ quando l'angolo $theta$ vale $180$ gradi, significa che i due vettori sono opposti (puntano in *direzioni esattamente opposte*):
 
-  Per il *teorema di Cauchy-Schwarz*:
-  $
-    nabla f(x_0)^T d <= ||nabla f(x_0)|| dot ||d|| = ||nabla f(x_0)||
-  $
-
-  L'uguaglianza si ottiene quando $d$ è *allineato* con $nabla f(x_0)$. Il minimo si ottiene quando:
   $
     d^* = -(nabla f(x_0))/(||nabla f(x_0)||)
   $
-
-  Ovvero, la direzione *opposta* al gradiente (normalizzato).
-
-
-
-
+  
 ]
 
 
