@@ -55,7 +55,7 @@ Consideriamo ora il punto $mr("rosso")$ di coordinate $(1,1)$. Se volessimo _qua
 
 - $mg("Linea Verde")$ (Derivata rispetto a $y$): È la stessa cosa, ma nell'altra direzione (asse $Y$). La linea verde spessa indica il tasso di variazione di $f$ se facciamo un piccolo passo verso Nord (aumentando $y$). Se la linea verde è inclinata verso l'alto, significa che aumentando $y$ aumenta anche $f$ (salita).
 
-=== Il Gradiente: Combinazione delle Derivate Parziali
+==== Il Gradiente: Combinazione delle Derivate Parziali
 
 Il *gradiente* $nabla f(x, y)$ è un *vettore* che combina entrambe le derivate parziali:
 $
@@ -132,11 +132,13 @@ Nel contesto della visualizzazione 3D:
   - *Posizione nel piano*: Il gradiente "vive" nel piano $(x, y)$ (piano di base), non nello spazio 3D della superficie
 ]
 
-=== Perpendicolarità alle Curve di Livello
+==== Perpendicolarità alle Curve di Livello
 
 Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di livello:
 
-*Curve di livello*: Se proiettiamo la superficie 3D sul piano $(x, y)$ e colleghiamo tutti i punti che hanno la *stessa altitudine* $f(x, y) = c$, otteniamo delle curve chiamate "curve di livello"
+*Curve di livello*: Se proiettiamo la superficie 3D sul piano $(x, y)$ e colleghiamo tutti i punti che hanno la *stessa altitudine* $f(x, y) = c$, otteniamo delle curve chiamate _curve di livello_:
+  -  Se le curve di livello sono vicine tra loro, la salita è ripida (il gradiente sarebbe una freccia lunga).
+  -  Se le curve sono lontane, il terreno è dolce/quasi piatto.
 
 *Perpendicolarità*: In ogni punto, il vettore gradiente $nabla f$ è *perpendicolare* (ortogonale, a 90°) alla curva di livello che passa per quel punto.
 
@@ -242,11 +244,11 @@ Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di l
       content((0.3, -0.2), text(size: 8pt, $(0,0)$), fill: green)
 
       // Legenda
-      rect((-2.8, 1.8), (-1, 2.6), fill: white.transparentize(20%), stroke: 0.5pt)
-      line((-2.6, 2.4), (-2.2, 2.4), stroke: (paint: blue.lighten(40%), thickness: 1pt))
-      content((-1.4, 2.4), text(size: 7pt, [Curve di livello]), anchor: "west")
-      line((-2.6, 2.1), (-2.2, 2.1), mark: (end: ">"), stroke: (paint: red, thickness: 1.3pt))
-      content((-1.4, 2.1), text(size: 7pt, [$nabla f$]), anchor: "west")
+      rect((-3.8, 1.8), (-1, 2.6), fill: white.transparentize(20%), stroke: 0.5pt)
+      line((-3.6, 2.4), (-3.2, 2.4), stroke: (paint: blue.lighten(40%), thickness: 1pt))
+      content((-3.0, 2.4), text(size: 7pt, [Curve di livello]), anchor: "west")
+      line((-3.6, 2.1), (-3.2, 2.1), mark: (end: ">"), stroke: (paint: red, thickness: 1.3pt))
+      content((-3, 2.1), text(size: 7pt, [$nabla f$]), anchor: "west")
     }),
     caption: [Campo vettoriale del gradiente per $f(x_1, x_2) = x_1^2 + 3x_1 x_2 + 2x_2^2$. I vettori rossi rappresentano $nabla f(x_1, x_2) = vec(2x_1 + 3x_2, 3x_1 + 4x_2)$ in vari punti, e sono sempre perpendicolari alle curve di livello blu.]
   )
@@ -257,21 +259,15 @@ Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di l
   $
 ]
 
-=== Interpretazione Geometrica del Gradiente
+=== Formalizzazione geometrica del gradiente
 
 Il gradiente ha diverse interpretazioni geometriche fondamentali:
 
-*1. Direzione di massima crescita*
+1. * Direzione di massima crescita*: Il vettore $nabla f(x_0)$ punta nella direzione in cui la funzione $f$ *cresce più rapidamente* a partire dal punto $x_0$.
 
-Il vettore $nabla f(x_0)$ punta nella direzione in cui la funzione $f$ *cresce più rapidamente* a partire dal punto $x_0$.
+2. *Vettore normale alle curve di livello*: Il gradiente in un punto è *perpendicolare* alla curva (o superficie) di livello passante per quel punto.
 
-*2. Vettore normale alle curve di livello*
-
-Il gradiente in un punto è *perpendicolare* alla curva (o superficie) di livello passante per quel punto.
-
-*3. Magnitudine come tasso di crescita*
-
-Il modulo $||nabla f(x_0)||$ rappresenta il *tasso di crescita massimo* di $f$ in $x_0$.
+3. * Magnitudine come tasso di crescita*: Il modulo $||nabla f(x_0)||$ rappresenta il *tasso di crescita massimo* di $f$ in $x_0$.
 
 #esempio()[
   Consideriamo il paraboloide:
@@ -359,63 +355,6 @@ $
   Questo significa che il gradiente punta nella direzione che *esce* dalla curva di livello, verso valori crescenti di $f$.
 ]
 
-#esempio()[
-  Per la funzione $f(x, y) = x^2 + 2y^2$, le curve di livello sono ellissi:
-  $
-    x^2 + 2y^2 = c
-  $
-
-  #figure(
-    cetz.canvas({
-      import cetz.draw: *
-
-      // Assi
-      line((-3, 0), (3, 0), mark: (end: ">"))
-      content((3.3, 0), $x$)
-      line((0, -2.5), (0, 2.5), mark: (end: ">"))
-      content((0, 2.8), $y$)
-
-      // Curve di livello (ellissi)
-      for c in (0.5, 1.0, 2.0, 3.0) {
-        let a = calc.sqrt(c)
-        let b = calc.sqrt(c / 2)
-        
-        // Disegna ellisse parametrica
-        let points = ()
-        for i in range(0, 101) {
-          let t = i * 2 * calc.pi / 100
-          points.push((a * calc.cos(t), b * calc.sin(t)))
-        }
-        line(..points, stroke: (paint: blue.lighten(40%), thickness: 1pt), close: true)
-      }
-
-      // Etichette
-      content((calc.sqrt(0.5), 0.1), text(size: 7pt, $c=0.5$), anchor: "south", fill: blue)
-      content((calc.sqrt(2), 0.1), text(size: 7pt, $c=2$), anchor: "south", fill: blue)
-
-      // Punti e gradienti
-      let test_points = ((1, 0.5), (-1, 0.7), (0.5, -1))
-      
-      for pt in test_points {
-        let (x, y) = pt
-        circle((x, y), radius: 0.08, fill: red, stroke: none)
-        
-        // Gradiente: ∇f = (2x, 4y)
-        let grad_x = 2 * x * 0.25
-        let grad_y = 4 * y * 0.25
-        
-        line((x, y), (x + grad_x, y + grad_y),
-             mark: (end: ">"),
-             stroke: (paint: red, thickness: 1.5pt))
-      }
-
-      // Origine
-      circle((0, 0), radius: 0.1, fill: green, stroke: none)
-    }),
-    caption: [Curve di livello ellittiche per $f(x,y) = x^2 + 2y^2$. Il gradiente $nabla f = vec(2x, 4y)$ è perpendicolare alle ellissi.]
-  )
-]
-
 #attenzione()[
   Le curve di livello sono fondamentali nell'ottimizzazione:
   
@@ -426,49 +365,56 @@ $
 
 === Teorema della Direzione di Massima Discesa
 
-Il teorema fondamentale che giustifica l'uso del gradiente nell'ottimizzazione:
+Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottimizzazione.
 
-*Teorema*: Dato un punto $x_0 in R^D$ e una funzione differenziabile $f: R^D -> R$, la direzione di *massima discesa* (che minimizza $f$ localmente) è data da:
-$
-  d^* = -nabla f(x_0)
-$
-
-Ovvero, il *negativo del gradiente* indica la direzione in cui la funzione decresce più rapidamente.
-
-==== Dimostrazione tramite Sviluppo di Taylor
-
-Consideriamo lo sviluppo di Taylor al primo ordine di $f$ intorno a $x_0$:
-$
-  f(x_0 + alpha d) approx f(x_0) + alpha nabla f(x_0)^T d
-$
-
-dove:
-- $d$ è una direzione unitaria ($||d|| = 1$)
-- $alpha > 0$ è uno step size piccolo
-
-#nota()[
-  Lo sviluppo di Taylor ci dice che per piccoli spostamenti $alpha d$ da $x_0$, la funzione cambia approssimativamente di:
+#teorema("Massima Discesa")[
+  Dato un punto $x_0 in R^D$ e una funzione differenziabile $f: R^D -> R$, tra tutte le direzioni unitarie $d$ (con $||d|| = 1$), la direzione di *massima discesa* (che minimizza $f$ localmente) è data da:
   $
-    Delta f approx alpha nabla f(x_0)^T d
+    d^* = -(nabla f(x_0)) / (||nabla f(x_0)||)
   $
+  Ovvero, il *negativo del gradiente* indica la direzione in cui la funzione *decresce più rapidamente*.
 ]
 
-Vogliamo trovare la direzione $d^*$ che *minimizza* $f(x_0 + alpha d)$, ovvero che rende $Delta f$ il più negativo possibile:
-$
-  d^* = arg min_(||d||=1) nabla f(x_0)^T d
-$
+#dimostrazione()[
+  Per la dimostrazione è necessario considerare lo *sviluppo di Taylor* al primo ordine di $f$ intorno a $x_0$:
+  $
+    f(x_0 + alpha d) approx f(x_0) + alpha nabla f(x_0)^T d
+  $
 
-Per il *teorema di Cauchy-Schwarz*:
-$
-  nabla f(x_0)^T d <= ||nabla f(x_0)|| dot ||d|| = ||nabla f(x_0)||
-$
+  dove:
+  - $d$ è una direzione unitaria ($||d|| = 1$)
+  - $alpha > 0$ è uno step size piccolo
 
-L'uguaglianza si ottiene quando $d$ è *allineato* con $nabla f(x_0)$. Il minimo si ottiene quando:
-$
-  d^* = -(nabla f(x_0))/(||nabla f(x_0)||)
-$
+  #nota()[
+    Lo sviluppo di Taylor ci dice che per piccoli spostamenti $alpha d$ da $x_0$, la funzione cambia approssimativamente di:
+    $
+      Delta f approx alpha nabla f(x_0)^T d
+    $
+  ]
 
-Ovvero, la direzione *opposta* al gradiente (normalizzato).
+  Vogliamo trovare la direzione $d^*$ che *minimizza* $f(x_0 + alpha d)$, ovvero che rende $Delta f$ il più negativo possibile:
+  $
+    d^* = arg min_(||d||=1) nabla f(x_0)^T d
+  $
+
+  Per il *teorema di Cauchy-Schwarz*:
+  $
+    nabla f(x_0)^T d <= ||nabla f(x_0)|| dot ||d|| = ||nabla f(x_0)||
+  $
+
+  L'uguaglianza si ottiene quando $d$ è *allineato* con $nabla f(x_0)$. Il minimo si ottiene quando:
+  $
+    d^* = -(nabla f(x_0))/(||nabla f(x_0)||)
+  $
+
+  Ovvero, la direzione *opposta* al gradiente (normalizzato).
+
+
+
+
+]
+
+
 
 #nota()[
   *Conclusione*: Muoversi nella direzione $-nabla f(x_0)$ garantisce la *massima riduzione* della funzione $f$ in un intorno di $x_0$.
