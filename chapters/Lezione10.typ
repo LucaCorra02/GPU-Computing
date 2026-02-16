@@ -420,27 +420,24 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
 
 === Gradient Descent: Algoritmo di Base
 
-L'algoritmo di *gradient descent* per minimizzare una funzione $f(x)$ è:
-
+Dato un punto iniziale $x_0 in R^n$ e una funzione obbiettivo $f: R^n -> R$ l'algoritmo di *discesa del gradiente* procede iterativamente. In particolare ad ogni passo:
 $
   x_(k+1) = x_k - alpha_k nabla f(x_k)
 $
-
 dove:
-- $x_k$: valore dei parametri all'iterazione $k$
-- $alpha_k > 0$: *learning rate* (passo di discesa)
+- *$x_k$*: valore dei parametri all'iterazione $k$
+- *$alpha_k > 0$*: *learning rate* (passo di discesa)
 - $nabla f(x_k)$: gradiente calcolato in $x_k$
 
 *Algoritmo iterativo*:
 1. Inizializza $x_0$ (casualmente o con euristica)
-2. Per $k = 0, 1, 2, dots$ fino a convergenza:
+2. Per $k = 0, 1, 2, dots$ fino a *convergenza*:
   - Calcola il gradiente: $g_k = nabla f(x_k)$
   - Aggiorna i parametri: $x_(k+1) = x_k - alpha_k g_k$
   - Controlla convergenza: se $||g_k|| < epsilon$, termina
 
 #nota()[
   *Criteri di convergenza*:
-
   - *Condizione ideale*: $nabla f(x_k) = bold(0)$ (punto stazionario)
   - *Condizione pratica*: $||nabla f(x_k)|| < epsilon$ per una soglia piccola $epsilon > 0$
 
@@ -557,9 +554,8 @@ Nel deep learning, i modelli sono costruiti attraverso la *composizione di funzi
 
 La *chain rule* è una regola fondamentale del calcolo differenziale che permette di calcolare la derivata di funzioni composte.
 
-*Caso unidimensionale*:
-
-Date due funzioni $g: R -> R$ e $f: R -> R$, la derivata della composizione $h(x) = f(g(x))$ è:
+==== Caso unidimensionale
+Date due funzioni $g: R -> R$ e $f: R -> R$ (derivabili), la derivata della composizione $h(x) = f(g(x))$ è:
 $
   (d h)/(d x) = (d f)/(d g) dot (d g)/(d x)
 $
@@ -586,17 +582,17 @@ $
   $
 ]
 
-*Caso multivariato*:
+=== Caso multivariato
 
-Per funzioni $g: R^n -> R^m$ e $f: R^m -> R^k$, la derivata della composizione $h(x) = f(g(x))$ è data dal prodotto delle matrici Jacobiane:
+Siano $f: R^n -> R^m$ e $g: R^m -> R^k$ due funzioni differenziabili. Allora per ogni punto $x_0 in R^n$, lo *jacobiano* della funzione composta $h(x) = f(g(x))$ ($R^n -> R^k$) è data dal prodotto delle matrici Jacobiane:
 $
-  J_h (x) = J_f (g(x)) dot J_g (x)
+  underbrace(J_h (x_0),k times n) = underbrace(J_g (f(x)), k times m) dot underbrace(J_f (x), m times n)
 $
 
 dove:
 - $J_h (x) in R^(k times n)$: Jacobiano di $h$
-- $J_f (g(x)) in R^(k times m)$: Jacobiano di $f$ valutato in $g(x)$
-- $J_g (x) in R^(m times n)$: Jacobiano di $g$ valutato in $x$
+- $J_g (f(x)) in R^(k times m)$: Jacobiano di $f$ valutato in $g(x)$
+- $J_f (x) in R^(m times n)$: Jacobiano di $g$ valutato in $x$
 
 #nota()[
   *Interpretazione per il Deep Learning*:
@@ -608,7 +604,7 @@ dove:
 
   Per calcolare il gradiente della loss rispetto ai parametri del primo layer, dobbiamo applicare ripetutamente la chain rule, moltiplicando i gradienti di tutti i layer attraversati.
 
-  Questo è il principio alla base della *backpropagation*!
+  Questo è il principio alla base della *backpropagation*
 ]
 
 #esempio()[
