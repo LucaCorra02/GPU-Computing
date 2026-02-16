@@ -19,7 +19,7 @@ $
 
 #nota()[
   Il gradiente trasforma una funzione scalare in un *campo vettoriale*: *ad ogni punto $x$* dello spazio viene associato un vettore *$nabla f(x)$*.
-  
+
   Nel contesto del deep learning:
   - $f$ rappresenta la *funzione di loss*
   - $x$ rappresenta i *parametri* del modello (pesi e bias)
@@ -38,15 +38,15 @@ $
 Supponendo di lavorare in uno spazio vettoriale a *due dimensioni* ($R^2$, con $D = 2$), possiamo dare un'interpretazione geometrica alle derivate parziali:
 
 #figure[
-  #image("/assets/Code_Generated_Image.png",width: 80%)
-  
+  #image("../assets/DerivateParziali2d.png", width: 80%)
+
   Visualizzazione 3D di una funzione $f(x,y)$ con le derivate parziali nel punto rosso $(1,1)$.
 ]
 
 In particolare, nell'immagine possiamo oservare che:
-- *spazio vettoriale*: rappresentato dagli assi $(x,y)$. Ogni punto $(x,y)$ rappresenta una coppia di valori per le variabili $x$ e $y$. 
+- *spazio vettoriale*: rappresentato dagli assi $(x,y)$. Ogni punto $(x,y)$ rappresenta una coppia di valori per le variabili $x$ e $y$.
 
-- funzione *$f(x,y)$*: per ogni punto $(x,y)$, la funzione associa un valore scalare $f(x,y)$. Questo valore rappresenta l'*altitudine* ($z$) della superficie sopra quel punto. 
+- funzione *$f(x,y)$*: per ogni punto $(x,y)$, la funzione associa un valore scalare $f(x,y)$. Questo valore rappresenta l'*altitudine* ($z$) della superficie sopra quel punto.
 
 Consideriamo ora il punto $mr("rosso")$ di coordinate $(1,1)$. Se volessimo _quanto è ripida la salita_, potremo utilizzare la *derivata parziale*. Essa indica lo spostamento rispette alle due direzioni principali $(x,y)$. Nell'immagine:
 
@@ -84,26 +84,18 @@ Nel contesto della visualizzazione 3D:
     content((px - 0.4, py - .4), text(size: 8pt, $(x_0, y_0)$), fill: red)
 
     // Derivata parziale rispetto a x (componente orizzontale)
-    let dx = 1.0  // lunghezza proporzionale a ∂f/∂x
-    line((px, py), (px + dx, py), 
-         mark: (end: ">"), 
-         stroke: (paint: blue, thickness: 2pt, dash: "dashed"))
-    content((px + dx/2, py - 0.3), text(size: 8pt, $(partial f)/(partial x)$), fill: blue)
+    let dx = 1.0 // lunghezza proporzionale a ∂f/∂x
+    line((px, py), (px + dx, py), mark: (end: ">"), stroke: (paint: blue, thickness: 2pt, dash: "dashed"))
+    content((px + dx / 2, py - 0.3), text(size: 8pt, $(partial f)/(partial x)$), fill: blue)
 
     // Derivata parziale rispetto a y (componente verticale)
-    let dy = 0.75  // lunghezza proporzionale a ∂f/∂y
-    line((px, py), (px, py + dy),
-         mark: (end: ">"),
-         stroke: (paint: green.darken(20%), thickness: 2pt, dash: "dashed"))
-    content((px - 0.5, py + dy/2), text(size: 8pt, $(partial f)/(partial y)$), fill: green.darken(20%))
+    let dy = 0.75 // lunghezza proporzionale a ∂f/∂y
+    line((px, py), (px, py + dy), mark: (end: ">"), stroke: (paint: green.darken(20%), thickness: 2pt, dash: "dashed"))
+    content((px - 0.5, py + dy / 2), text(size: 8pt, $(partial f)/(partial y)$), fill: green.darken(20%))
 
     // Gradiente (vettore risultante)
-    line((px, py), (px + dx, py + dy),
-         mark: (end: ">"),
-         stroke: (paint: red.darken(20%), thickness: 2.5pt))
-    content((px + dx/2 + 0.3, py + dy/2 + 0.6), 
-            text(size: 9pt, weight: "bold", $nabla f$), 
-            fill: red.darken(20%))
+    line((px, py), (px + dx, py + dy), mark: (end: ">"), stroke: (paint: red.darken(20%), thickness: 2.5pt))
+    content((px + dx / 2 + 0.3, py + dy / 2 + 0.6), text(size: 9pt, weight: "bold", $nabla f$), fill: red.darken(20%))
 
     // Rettangolo tratteggiato per visualizzare la composizione
     line((px + dx, py), (px + dx, py + dy), stroke: (dash: "dotted", paint: gray))
@@ -116,17 +108,22 @@ Nel contesto della visualizzazione 3D:
     rect((3.2, 0.2), (rel: (1.4, 0.9)), fill: white.transparentize(10%), stroke: 0.8pt)
     line((3.3, 0.9), (3.6, 0.9), mark: (end: ">"), stroke: (paint: blue, thickness: 1.5pt, dash: "dashed"))
     content((3.65, 0.9), text(size: 7pt, [Comp. $x$]), anchor: "west")
-    line((3.3, 0.65), (3.6, 0.65), mark: (end: ">"), stroke: (paint: green.darken(20%), thickness: 1.5pt, dash: "dashed"))
+    line(
+      (3.3, 0.65),
+      (3.6, 0.65),
+      mark: (end: ">"),
+      stroke: (paint: green.darken(20%), thickness: 1.5pt, dash: "dashed"),
+    )
     content((3.65, 0.65), text(size: 7pt, [Comp. $y$]), anchor: "west")
     line((3.3, 0.4), (3.6, 0.4), mark: (end: ">"), stroke: (paint: red.darken(20%), thickness: 2pt))
     content((3.65, 0.4), text(size: 7pt, weight: "bold", [Gradiente]), anchor: "west")
   }),
-  caption: [Il gradiente $nabla f$ ($mr("rosso")$) è il vettore che si ottiene combinando le due derivate parziali: la componente $mb("blu")$ $(partial f)/(partial x)$ (orizzontale) e la componente $mg("verde")$ $(partial f)/(partial y)$ (verticale). Nel piano 2D $(x,y)$, il gradiente indica la direzione di massima crescita di $f$.]
+  caption: [Il gradiente $nabla f$ ($mr("rosso")$) è il vettore che si ottiene combinando le due derivate parziali: la componente $mb("blu")$ $(partial f)/(partial x)$ (orizzontale) e la componente $mg("verde")$ $(partial f)/(partial y)$ (verticale). Nel piano 2D $(x,y)$, il gradiente indica la direzione di massima crescita di $f$.],
 )
 
 #nota()[
   *Interpretazione geometrica del gradiente*:
-  
+
   - *Direzione*: Il gradiente punta nella direzione in cui la funzione cresce più rapidamente
   - *Magnitudine*: La lunghezza del vettore gradiente indica quanto ripida è la salita
   - *Posizione nel piano*: Il gradiente "vive" nel piano $(x, y)$ (piano di base), non nello spazio 3D della superficie
@@ -137,18 +134,18 @@ Nel contesto della visualizzazione 3D:
 Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di livello:
 
 *Curve di livello*: Se proiettiamo la superficie 3D sul piano $(x, y)$ e colleghiamo tutti i punti che hanno la *stessa altitudine* $f(x, y) = c$, otteniamo delle curve chiamate _curve di livello_:
-  -  Se le curve di livello sono vicine tra loro, la salita è ripida (il gradiente sarebbe una freccia lunga).
-  -  Se le curve sono lontane, il terreno è dolce/quasi piatto.
+- Se le curve di livello sono vicine tra loro, la salita è ripida (il gradiente sarebbe una freccia lunga).
+- Se le curve sono lontane, il terreno è dolce/quasi piatto.
 
 *Perpendicolarità*: In ogni punto, il vettore gradiente $nabla f$ è *perpendicolare* (ortogonale, a 90°) alla curva di livello che passa per quel punto.
 
 #attenzione()[
   *Importante*: La perpendicolarità è nel *piano $(x, y)$*, non nello spazio 3D!
-  
+
   - Il gradiente è un vettore 2D: $nabla f(x, y) = vec((partial f)/(partial x), (partial f)/(partial y))$
   - Le curve di livello sono curve 2D nel piano $(x, y)$
   - La perpendicolarità si riferisce a queste entità 2D
-  
+
   Quando visualizziamo la superficie 3D, "proiettiamo" mentalmente il gradiente sul piano di base per vedere la sua perpendicolarità alle curve di livello.
 ]
 
@@ -209,34 +206,32 @@ Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di l
 
       // Punti campione e vettori gradiente
       let sample_points = (
-        (1, 0.5), 
-        (0.5, 1), 
-        (-0.5, 0.8), 
+        (1, 0.5),
+        (0.5, 1),
+        (-0.5, 0.8),
         (-1, -0.5),
         (0.8, -0.6),
         (1.5, 0),
         (0, 1.2),
-        (-1.2, 0.3)
+        (-1.2, 0.3),
       )
-      
+
       for pt in sample_points {
         let (x1, x2) = pt
         // Punto
         circle((x1, x2), radius: 0.06, fill: red, stroke: none)
-        
+
         // Calcola gradiente: ∇f = (2x₁ + 3x₂, 3x₁ + 4x₂)
         let grad_x1 = 2 * x1 + 3 * x2
         let grad_x2 = 3 * x1 + 4 * x2
-        
+
         // Scala per visualizzazione
         let scale = 0.15
         let gx = grad_x1 * scale
         let gy = grad_x2 * scale
-        
+
         // Disegna vettore gradiente
-        line((x1, x2), (x1 + gx, x2 + gy),
-             mark: (end: ">"),
-             stroke: (paint: red, thickness: 1.3pt))
+        line((x1, x2), (x1 + gx, x2 + gy), mark: (end: ">"), stroke: (paint: red, thickness: 1.3pt))
       }
 
       // Origine
@@ -250,7 +245,7 @@ Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di l
       line((-3.6, 2.1), (-3.2, 2.1), mark: (end: ">"), stroke: (paint: red, thickness: 1.3pt))
       content((-3, 2.1), text(size: 7pt, [$nabla f$]), anchor: "west")
     }),
-    caption: [Campo vettoriale del gradiente per $f(x_1, x_2) = x_1^2 + 3x_1 x_2 + 2x_2^2$. I vettori rossi rappresentano $nabla f(x_1, x_2) = vec(2x_1 + 3x_2, 3x_1 + 4x_2)$ in vari punti, e sono sempre perpendicolari alle curve di livello blu.]
+    caption: [Campo vettoriale del gradiente per $f(x_1, x_2) = x_1^2 + 3x_1 x_2 + 2x_2^2$. I vettori rossi rappresentano $nabla f(x_1, x_2) = vec(2x_1 + 3x_2, 3x_1 + 4x_2)$ in vari punti, e sono sempre perpendicolari alle curve di livello blu.],
   )
 
   In un punto specifico, ad esempio $(x_1, x_2) = (1, 2)$:
@@ -286,7 +281,7 @@ Il gradiente ha diverse interpretazioni geometriche fondamentali:
 
       // Configurazione
       let scale = 1.5
-      
+
       // Assi
       line((-3, 0), (3, 0), mark: (end: ">"))
       content((3.3, 0), $x$)
@@ -305,20 +300,18 @@ Il gradiente ha diverse interpretazioni geometriche fondamentali:
 
       // Punti campione
       let points = ((1, 0.5), (0.7, 1.5), (-1, 1), (-1.5, -0.5), (0.5, -1.5))
-      
+
       for pt in points {
         let (x, y) = pt
         // Punto
         circle((x, y), radius: 0.08, fill: red, stroke: none)
-        
+
         // Calcola gradiente: ∇f = (2x, 2y)
-        let grad_x = 2 * x * 0.3  // Scala per visualizzazione
+        let grad_x = 2 * x * 0.3 // Scala per visualizzazione
         let grad_y = 2 * y * 0.3
-        
+
         // Disegna vettore gradiente
-        line((x, y), (x + grad_x, y + grad_y), 
-             mark: (end: ">"), 
-             stroke: (paint: red, thickness: 1.5pt))
+        line((x, y), (x + grad_x, y + grad_y), mark: (end: ">"), stroke: (paint: red, thickness: 1.5pt))
       }
 
       // Origine
@@ -332,11 +325,11 @@ Il gradiente ha diverse interpretazioni geometriche fondamentali:
       line((-2.6, 2.3), (-2.2, 2.3), mark: (end: ">"), stroke: (paint: red, thickness: 1.5pt))
       content((-1.9, 2.3), text(size: 7pt, [$nabla f$]), anchor: "west")
     }),
-    caption: [Campo vettoriale del gradiente $nabla f(x,y) = vec(2x, 2y)$ per il paraboloide $f(x,y) = x^2 + y^2$. I vettori rossi (gradienti) sono perpendicolari alle curve di livello blu e puntano verso l'esterno (crescita).]
+    caption: [Campo vettoriale del gradiente $nabla f(x,y) = vec(2x, 2y)$ per il paraboloide $f(x,y) = x^2 + y^2$. I vettori rossi (gradienti) sono perpendicolari alle curve di livello blu e puntano verso l'esterno (crescita).],
   )
 
   *Osservazioni*:
-  - All'origine $(0, 0)$, il gradiente è nullo: $nabla f(0,0) = vec(0,0)$ (punto di minimo)
+  - All'origine $(0, 0)$, il gradiente è nullo: $nabla f(0,0) = vec(0, 0)$ (punto di minimo)
   - Nei punti lontani dall'origine, i vettori gradiente sono più lunghi (crescita più rapida)
   - I gradienti puntano *radialmente verso l'esterno* (direzione di massima crescita)
   - Sono tutti *perpendicolari* ai cerchi (curve di livello)
@@ -351,13 +344,13 @@ $
 
 #nota()[
   *Proprietà fondamentale*: Il gradiente $nabla f(x_0)$ in un punto $x_0$ è *ortogonale* alla curva di livello passante per $x_0$.
-  
+
   Questo significa che il gradiente punta nella direzione che *esce* dalla curva di livello, verso valori crescenti di $f$.
 ]
 
 #attenzione()[
   Le curve di livello sono fondamentali nell'ottimizzazione:
-  
+
   - Un *passo di gradient descent* ci sposta da una curva di livello a un'altra con valore inferiore
   - La direzione *perpendicolare* alla curva (il gradiente) è la direzione di *massimo cambiamento*
   - Seguire il gradiente negativo ci porta verso valori decrescenti di $f$ (verso il minimo)
@@ -421,7 +414,7 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
 
 #nota()[
   *Conclusione*: Muoversi nella direzione $-nabla f(x_0)$ garantisce la *massima riduzione* della funzione $f$ in un intorno di $x_0$.
-  
+
   Questo è il principio alla base del *Gradient Descent*!
 ]
 
@@ -441,22 +434,22 @@ dove:
 *Algoritmo iterativo*:
 1. Inizializza $x_0$ (casualmente o con euristica)
 2. Per $k = 0, 1, 2, dots$ fino a convergenza:
-   - Calcola il gradiente: $g_k = nabla f(x_k)$
-   - Aggiorna i parametri: $x_(k+1) = x_k - alpha_k g_k$
-   - Controlla convergenza: se $||g_k|| < epsilon$, termina
+  - Calcola il gradiente: $g_k = nabla f(x_k)$
+  - Aggiorna i parametri: $x_(k+1) = x_k - alpha_k g_k$
+  - Controlla convergenza: se $||g_k|| < epsilon$, termina
 
 #nota()[
   *Criteri di convergenza*:
-  
+
   - *Condizione ideale*: $nabla f(x_k) = bold(0)$ (punto stazionario)
   - *Condizione pratica*: $||nabla f(x_k)|| < epsilon$ per una soglia piccola $epsilon > 0$
-  
+
   #attenzione()[
     Un gradiente nullo può indicare:
     - Un *minimo locale* (desiderato)
     - Un *massimo locale* (indesiderato)
     - Un *punto di sella* (né minimo né massimo)
-    
+
     In deep learning, i *punti di sella* sono molto più comuni dei minimi locali in alta dimensione.
   ]
 ]
@@ -471,15 +464,15 @@ dove:
 
   *Iterazioni con $alpha = 0.1$*:
 
-  - $k=0$: 
+  - $k=0$:
     - $x_0 = vec(3, 2)$
     - $nabla f(x_0) = vec(6, 16)$
     - $x_1 = vec(3, 2) - 0.1 vec(6, 16) = vec(2.4, 0.4)$
-  
+
   - $k=1$:
     - $nabla f(x_1) = vec(4.8, 3.2)$
     - $x_2 = vec(2.4, 0.4) - 0.1 vec(4.8, 3.2) = vec(1.92, 0.08)$
-  
+
   - $k=2$:
     - $nabla f(x_2) = vec(3.84, 0.64)$
     - $x_3 = vec(1.92, 0.08) - 0.1 vec(3.84, 0.64) = vec(1.536, 0.016)$
@@ -489,11 +482,11 @@ dove:
 
 #attenzione()[
   *Scelta del Learning Rate $alpha$*:
-  
+
   - $alpha$ troppo *piccolo*: convergenza molto lenta, molte iterazioni
   - $alpha$ troppo *grande*: oscillazioni, possibile divergenza
   - $alpha$ *ottimale*: bilanciamento tra velocità e stabilità
-  
+
   In pratica si usano tecniche di *learning rate scheduling* (decay, adaptive methods come Adam).
 ]
 
@@ -552,7 +545,7 @@ dove:
     content((1.5, 3), text(size: 10pt, $f(x) = x^2$), fill: blue)
     content((2, 2.3), text(size: 9pt, [Gradient Descent]), fill: red)
   })
-  
+
   Visualizzazione del gradient descent su una funzione unidimensionale. La traiettoria rossa mostra i passi iterativi che convergono al minimo (punto verde).
 ]
 
@@ -586,10 +579,10 @@ $
 
   Applicando la chain rule:
   $
-    h'(x) &= f'(g(x)) dot g'(x) \
-          &= 3g^2 dot 2x \
-          &= 3(x^2 + 1)^2 dot 2x \
-          &= 6x(x^2 + 1)^2
+    h'(x) & = f'(g(x)) dot g'(x) \
+          & = 3g^2 dot 2x \
+          & = 3(x^2 + 1)^2 dot 2x \
+          & = 6x(x^2 + 1)^2
   $
 ]
 
@@ -607,7 +600,7 @@ dove:
 
 #nota()[
   *Interpretazione per il Deep Learning*:
-  
+
   In una rete neurale con $L$ layer, l'output finale è una composizione di funzioni:
   $
     y = f_L (f_(L-1)(dots f_2(f_1(x))))
@@ -620,7 +613,7 @@ dove:
 
 #esempio()[
   Consideriamo una rete neurale minima con due layer:
-  
+
   - Layer 1: $z = w_1 x + b_1$ (trasformazione lineare)
   - Activation: $a = sigma(z)$ (funzione sigmoide)
   - Layer 2: $hat(y) = w_2 a + b_2$ (output)
@@ -675,10 +668,10 @@ $
 
 #nota()[
   *Confronto con il Gradiente*:
-  
+
   - Il *gradiente* $nabla f$ si applica a funzioni scalari: $f: R^n -> R$ (produce un vettore $in R^n$)
   - Lo *Jacobiano* $J_F$ si applica a funzioni vettoriali: $F: R^n -> R^m$ (produce una matrice $in R^(m times n)$)
-  
+
   In particolare, se $m=1$ (funzione scalare), lo Jacobiano coincide con il gradiente trasposto:
   $
     J_f = nabla f^T
@@ -773,7 +766,7 @@ dove:
 
 #esempio()[
   Consideriamo una rete neurale con due layer lineari:
-  
+
   - Layer 1: $z = W_1 x in R^m$ (con $x in R^n$)
   - Layer 2: $y = W_2 z in R^k$ (con $z in R^m$)
 
@@ -790,7 +783,7 @@ dove:
 
 #attenzione()[
   *Importanza per la Backpropagation*:
-  
+
   Durante la backpropagation, il gradiente della loss viene propagato all'indietro attraverso la rete moltiplicando ripetutamente gli Jacobiani dei vari layer. Questo è computazionalmente efficiente grazie alla struttura matriciale degli Jacobiani.
 ]
 
@@ -826,12 +819,12 @@ Il grafo viene costruito *dinamicamente* durante l'esecuzione del codice (*dynam
 
   ```python
   import torch
-  
+
   # Input e parametri
   x = torch.tensor([2.0], requires_grad=True)  # Nodo foglia
   w = torch.tensor([3.0], requires_grad=True)  # Nodo foglia
   b = torch.tensor([1.0], requires_grad=True)  # Nodo foglia
-  
+
   # Forward pass: costruzione del grafo
   u = x * w       # Operazione di moltiplicazione
   z = u + b       # Operazione di addizione
@@ -852,17 +845,17 @@ Il grafo viene costruito *dinamicamente* durante l'esecuzione del codice (*dynam
       // Nodi input/parametri (foglie)
       circle((-2, 0), radius: 0.4, ..param-style, name: "x")
       content("x", text(size: 10pt, $x$))
-      
+
       circle((0, 0), radius: 0.4, ..param-style, name: "w")
       content("w", text(size: 10pt, $w$))
-      
+
       circle((2, 0), radius: 0.4, ..param-style, name: "b")
       content("b", text(size: 10pt, $b$))
 
       // Operazione moltiplicazione
       rect((-1, 1.5), (rel: (1, 0.6)), ..op-style, name: "mul")
       content((-0.5, 1.8), text(size: 9pt, $times$))
-      
+
       // Nodo u
       circle((-0.5, 3), radius: 0.4, ..node-style, name: "u")
       content("u", text(size: 10pt, $u$))
@@ -903,15 +896,15 @@ Il grafo viene costruito *dinamicamente* durante l'esecuzione del codice (*dynam
       rect((3.2, 6.1), (rel: (0.3, 0.2)), ..op-style)
       content((4, 6.2), text(size: 8pt, [Operazioni]), anchor: "west")
     }),
-    caption: [Grafo computazionale per $y = (x times w + b)^2$. I nodi verdi sono parametri con `requires_grad=True`, i nodi blu sono valori intermedi, e i nodi arancioni sono operazioni.]
+    caption: [Grafo computazionale per $y = (x times w + b)^2$. I nodi verdi sono parametri con `requires_grad=True`, i nodi blu sono valori intermedi, e i nodi arancioni sono operazioni.],
   )
 
   *Valori concreti*:
   Con $x=2$, $w=3$, $b=1$:
   $
-    u &= 2 times 3 = 6 \
-    z &= 6 + 1 = 7 \
-    y &= 7^2 = 49
+    u & = 2 times 3 = 6 \
+    z & = 6 + 1 = 7 \
+    y & = 7^2 = 49
   $
 ]
 
@@ -937,7 +930,7 @@ Il grafo computazionale supporta due modalità di attraversamento:
   ```python
   # Backward pass
   y.backward()  # Calcola automaticamente i gradienti
-  
+
   print(f"dy/dx = {x.grad}")  # Gradiente rispetto a x
   print(f"dy/dw = {w.grad}")  # Gradiente rispetto a w
   print(f"dy/db = {b.grad}")  # Gradiente rispetto a b
@@ -946,16 +939,16 @@ Il grafo computazionale supporta due modalità di attraversamento:
   *Applicazione manuale della chain rule*:
 
   $
-    y &= z^2 quad &=> quad (d y)/(d z) &= 2z = 2(7) = 14 \
-    z &= u + b quad &=> quad (d z)/(d u) &= 1, quad (d z)/(d b) &= 1 \
-    u &= x times w quad &=> quad (d u)/(d x) &= w = 3, quad (d u)/(d w) &= x = 2
+    y & = z^2 quad       & => quad (d y)/(d z) & = 2z = 2(7) = 14 \
+    z & = u + b quad     & => quad (d z)/(d u) & = 1, quad (d z)/(d b)     &     = 1 \
+    u & = x times w quad & => quad (d u)/(d x) & = w = 3, quad (d u)/(d w) & = x = 2
   $
 
   *Gradienti finali* (applicando la chain rule):
   $
-    (d y)/(d x) &= (d y)/(d z) dot (d z)/(d u) dot (d u)/(d x) = 14 dot 1 dot 3 = 42 \
-    (d y)/(d w) &= (d y)/(d z) dot (d z)/(d u) dot (d u)/(d w) = 14 dot 1 dot 2 = 28 \
-    (d y)/(d b) &= (d y)/(d z) dot (d z)/(d b) = 14 dot 1 = 14
+    (d y)/(d x) & = (d y)/(d z) dot (d z)/(d u) dot (d u)/(d x) = 14 dot 1 dot 3 = 42 \
+    (d y)/(d w) & = (d y)/(d z) dot (d z)/(d u) dot (d u)/(d w) = 14 dot 1 dot 2 = 28 \
+    (d y)/(d b) & = (d y)/(d z) dot (d z)/(d b) = 14 dot 1 = 14
   $
 
   PyTorch calcola automaticamente questi valori esplorando il grafo all'indietro!
@@ -974,17 +967,17 @@ Un aspetto importante della differenziazione automatica in PyTorch è l'*accumul
 #esempio()[
   ```python
   x = torch.tensor([1.0], requires_grad=True)
-  
+
   # Prima backward
   y1 = x ** 2
   y1.backward()
   print(x.grad)  # tensor([2.])  (dy1/dx = 2x = 2)
-  
+
   # Seconda backward SENZA azzerare
   y2 = x ** 3
   y2.backward()
   print(x.grad)  # tensor([5.])  (2 + 3 = 5, accumula!)
-  
+
   # Terza backward CON azzeramento
   x.grad.zero_()
   y3 = x ** 4
@@ -1007,10 +1000,10 @@ La differenziazione automatica attraverso grafi computazionali offre numerosi va
 
 #nota()[
   *Complessità computazionale*:
-  
+
   - *Forward pass*: $O(n)$ dove $n$ è il numero di operazioni
   - *Backward pass*: $O(n)$ (stesso ordine di grandezza del forward!)
-  
+
   Questo è un risultato notevole: calcolare *tutti* i gradienti costa circa quanto calcolare la funzione stessa.
 ]
 
