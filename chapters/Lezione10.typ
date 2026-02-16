@@ -608,7 +608,7 @@ dove:
 ]
 
 #esempio()[
-  Consideriamo una rete neurale minima con due layer:
+  Consideriamo una rete neurale minima con due layer (input e output scalari, un solo neurone nascosto, dimensone $1$):
 
   - Layer 1: $z = w_1 x + b_1$ (trasformazione lineare)
   - Activation: $a = sigma(z)$ (funzione sigmoide)
@@ -617,19 +617,35 @@ dove:
 
   Per calcolare $(partial L)/(partial w_1)$ (gradiente rispetto al peso del primo layer), applichiamo la chain rule:
   $
-    (partial L)/(partial w_1) = (partial L)/(partial hat(y)) dot (partial hat(y))/(partial a) dot (partial a)/(partial z) dot (partial z)/(partial w_1)
+    (partial L)/(partial w_1) = underbrace((partial L)/(partial hat(y)),"Step"1) dot (partial hat(y))/(partial a) dot (partial a)/(partial z) dot underbrace((partial z)/(partial w_1),"Step"4)
   $
 
   dove:
-  - $(partial L)/(partial hat(y)) = hat(y) - y$
-  - $(partial hat(y))/(partial a) = w_2$
-  - $(partial a)/(partial z) = sigma(z)(1 - sigma(z))$
-  - $(partial z)/(partial w_1) = x$
+  - $(partial L)/(partial hat(y)) = 2 dot 1/2 (hat(y)-y) =hat(y) - y$
+  - $(partial hat(y))/(partial a) = w_2$ (in quanto sto derivando in $a$, rimane solo il coefficiente $w_2$)
+  - $(partial a)/(partial z) = sigma(z)(1 - sigma(z))$ (derivata della sigmoide)
+  - $(partial z)/(partial w_1) = x$ (sto derivando rispetto a $w_1$, quindi rimane solo il coefficiente $x$)
 
   Il gradiente finale è:
   $
     (partial L)/(partial w_1) = (hat(y) - y) dot w_2 dot sigma(z)(1 - sigma(z)) dot x
   $
+
+  Calcolando il gradiente rispetto al peso $b_1$:
+  $
+    (partial L)/(partial b_1) = (partial L)/partial(hat(y)) dot partial(hat(y))/partial(a) dot partial(a)/partial(z) dot partial(z)/partial(b_1) \
+    (hat(y)-y) dot w_2 dot sigma (z) (1 - sigma(z)) dot 1
+  $
+  Calcolando il gradiente rispetto al peso $w_2$:
+  $
+    partial(L)/partial(w_2) = partial(L)/partial(hat(y)) dot partial(hat(y))/partial(w_2)\
+
+    (hat(y)-y) dot a
+
+  $
+
+
+
 ]
 
 #attenzione()[
@@ -638,18 +654,16 @@ dove:
 
 == Lo Jacobiano: Gradiente Generalizzato
 
-Quando lavoriamo con funzioni che mappano vettori in vettori (come i layer delle reti neurali), il gradiente non è sufficiente. Abbiamo bisogno dello *Jacobiano*.
+Quando lavoriamo con funzioni che mappano vettori in vettori (come i layer delle reti neurali), il gradiente non è sufficiente. Abbiamo bisogno dello *Jacobiano*. Si tratta dunque di una generalizzazione del gradiente per funzioni vettoriali.
 
-=== Definizione dello Jacobiano
-
-Data una funzione vettoriale $F: R^n -> R^m$:
+Data una funzione *vettoriale* $F: R^n -> R^m$:
 $
-  F(x) = vec(f_1(x), f_2(x), dots.v, f_m(x))
+  F(overline(x)) = vec(f_1(overline(x)), f_2(overline(x)), dots.v, f_m(overline(x)))
 $
 
-dove $x = vec(x_1, x_2, dots, x_n) in R^n$, lo *Jacobiano* di $F$ è la matrice delle derivate parziali:
+dove $overline(x) = vec(x_1, x_2, dots, x_n) in R^n$, lo *Jacobiano* di $F$ è la matrice delle derivate parziali:
 $
-  J_F (x) = mat(
+  J_F = mat(
     (partial f_1)/(partial x_1), (partial f_1)/(partial x_2), dots, (partial f_1)/(partial x_n);
     (partial f_2)/(partial x_1), (partial f_2)/(partial x_2), dots, (partial f_2)/(partial x_n);
     dots.v, dots.v, dots.down, dots.v;
@@ -674,38 +688,42 @@ $
   $
 ]
 
-=== Esempio: Jacobiano di una Trasformazione Lineare
+#esempio()[
+  
+  Consideriamo $F: R^2 -> R^2$ definita da:
+  $
+    F(x, y) = vec(f_1(x, y), f_2(x, y)) = vec(x^2 + y, x y)
+  $
 
-Consideriamo $F: R^2 -> R^2$ definita da:
-$
-  F(x, y) = vec(f_1(x, y), f_2(x, y)) = vec(x^2 + y, x y)
-$
+  *Calcoliamo lo Jacobiano*:
 
-*Calcoliamo lo Jacobiano*:
+  Le componenti sono:
+  - $f_1(x, y) = x^2 + y$
+  - $f_2(x, y) = x y$
 
-Le componenti sono:
-- $f_1(x, y) = x^2 + y$
-- $f_2(x, y) = x y$
+  Le derivate parziali sono:
+  - $(partial f_1)/(partial x) = 2x$, $(partial f_1)/(partial y) = 1$
+  - $(partial f_2)/(partial x) = y$, $(partial f_2)/(partial y) = x$
 
-Le derivate parziali sono:
-- $(partial f_1)/(partial x) = 2x$, $(partial f_1)/(partial y) = 1$
-- $(partial f_2)/(partial x) = y$, $(partial f_2)/(partial y) = x$
+  Lo Jacobiano è una matrice $2 times 2$:
+  $
+    J_F (x, y) = mat(
+      2x, 1;
+      y, x
+    )
+  $
 
-Lo Jacobiano è:
-$
-  J_F (x, y) = mat(
-    2x, 1;
-    y, x
-  )
-$
+  In un punto specifico, ad esempio $(x, y) = (2, 3)$:
+  $
+    J_F (2, 3) = mat(
+      4, 1;
+      3, 2
+    )
+  $
 
-In un punto specifico, ad esempio $(x, y) = (2, 3)$:
-$
-  J_F (2, 3) = mat(
-    4, 1;
-    3, 2
-  )
-$
+]
+
+
 
 #esempio()[
   *Jacobiano di un layer fully-connected*:
@@ -736,20 +754,41 @@ $
 
 === Jacobiano e Chain Rule
 
-Lo Jacobiano è essenziale per applicare la chain rule in dimensione superiore. Data la composizione $h = g compose f$:
+Lo Jacobiano è essenziale per applicare la chain rule in dimensione superiore. Supponiamo di avere una funzione $f: R^n -> R^m$ (layer che prende un input di dim $n$) e una funzione $g: R^m -> R$. Consideriamo la composizione $h(x) = g compose f$:
 $
-  h: R^n ->^f R^m ->^g R^k
-$
-
-Lo Jacobiano di $h$ è dato dal *prodotto* degli Jacobiani:
-$
-  J_h (x) = J_g (f(x)) dot J_f (x)
+  h: R^n ->^f R^m ->^g R
 $
 
-dove:
-- $J_f (x) in R^(m times n)$
-- $J_g (f(x)) in R^(k times m)$
-- $J_h (x) in R^(k times n)$
+Il gradiente di $h$ (rispetto all'input $x$, ovvero $h^'$) è dato dal prodotto dello Jacobiano di $f$ e del gradiente di $g$:
+$
+  h^' = gradient_x (g)= ((partial g)/(partial f_1) dot, dots, dot (partial g)/(partial f_m))^T\
+
+  underbrace(J_f^T, n times m) dot underbrace(h^',m times 1) =  mat(
+    (partial f_1)/(partial x_1), (partial f_2)/(partial x_1), dots, (partial f_m)/(partial x_1);
+    (partial f_1)/(partial x_2), (partial f_2)/(partial x_2), dots, (partial f_m)/(partial x_2);
+    dots.v, dots.v, dots.down, dots.v;
+    (partial f_1)/(partial x_n), (partial f_2)/(partial x_n), dots, (partial f_m)/(partial x_n)
+  ) dot vec((partial g)/(partial f_1), (partial g)/(partial f_2), dots, (partial g)/(partial f_m)) = vec(
+    (partial g)/(partial x_1), (partial g)/(partial x_2), dots, (partial g)/(partial x_n)
+  )
+$
+
+#informalmente()[
+  - $f$ è l'output di un layer con $m$ neuroni (un vettore).
+  
+  - $g$ è la funzione di Loss finale che prende tutti questi output e calcola un numero unico (l'errore scalare $h$).
+
+  - Il gradiente $gradient(g)$, è un vettore di dimensione $m$ che contiene l'errore per ciascuno degli $m$ neuroni di output.
+
+  - Lo Jacobiano $J_f$ è una matrice che descrive come ogni input $x_j$ influenza ogni output $f_i$.
+
+il vettore risultante $J_f^T dot gradient(g)$ ci dice come ogni input $x_j$ contribuisce all'errore totale, permettendoci di aggiornare i pesi del layer precedente in modo efficace durante la backpropagation.
+]
+
+
+
+
+
 
 #nota()[
   *Dimensioni nel prodotto*:
