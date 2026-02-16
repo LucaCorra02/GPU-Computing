@@ -783,7 +783,22 @@ $
   - Lo Jacobiano $J_f$ è una matrice che descrive come ogni input $x_j$ influenza ogni output $f_i$.
 
 il vettore risultante $J_f^T dot gradient(g)$ ci dice come ogni input $x_j$ contribuisce all'errore totale, permettendoci di aggiornare i pesi del layer precedente in modo efficace durante la backpropagation.
+
+In questo caso, la chain rule serve a  raccogliere tutti i pezzetti di errore che provengono da tanti neuroni successivi diversi ($m$) e sommarli correttamente per capire come aggiornare un singolo neurone precedente ($n$). Senza la matrice jacobiana, il neurone $x_1$ non saprebbe quale segnale di errore ascoltare, perché è collegato a mille cose diverse contemporaneamente.
 ]
+
+Se si avessero ad esempio $3$ layer:
+- Input $x$ entra nel Layer 1 $->$ produce $f$
+- $f$ entra nel Layer 2 $->$ produce $g$
+- $g$ entra nel Layer 3 $->$ produce $h$
+
+
+La loss finale (errore) viene calcolata da $h$. Per sapere come aggiornare l'input iniziale $x$ (o i pesi del primo layer), applichiamo la *Chain Rule a cascata*. Invece di avere una sola matrice Jacobiana, moltiplichiamo tra loro le *matrici Jacobiane di ogni layer*:
+$
+  "Errore su" x = J_(f) dot J_(g) dot J_(h) dot underbrace(gradient(h), "vettore degli"\ "errori" in R^m)
+$
+
+Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
 
 
 
