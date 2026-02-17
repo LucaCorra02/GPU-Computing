@@ -586,7 +586,7 @@ $
 
 Siano $f: R^n -> R^m$ e $g: R^m -> R^k$ due funzioni differenziabili. Allora per ogni punto $x_0 in R^n$, lo *jacobiano* della funzione composta $h(x) = f(g(x))$ ($R^n -> R^k$) è data dal prodotto delle matrici Jacobiane:
 $
-  underbrace(J_h (x_0),k times n) = underbrace(J_g (f(x)), k times m) dot underbrace(J_f (x), m times n)
+  underbrace(J_h (x_0), k times n) = underbrace(J_g (f(x)), k times m) dot underbrace(J_f (x), m times n)
 $
 
 dove:
@@ -617,7 +617,7 @@ dove:
 
   Per calcolare $(partial L)/(partial w_1)$ (gradiente rispetto al peso del primo layer), applichiamo la chain rule:
   $
-    (partial L)/(partial w_1) = underbrace((partial L)/(partial hat(y)),"Step"1) dot (partial hat(y))/(partial a) dot (partial a)/(partial z) dot underbrace((partial z)/(partial w_1),"Step"4)
+    (partial L)/(partial w_1) = underbrace((partial L)/(partial hat(y)), "Step"1) dot (partial hat(y))/(partial a) dot (partial a)/(partial z) dot underbrace((partial z)/(partial w_1), "Step"4)
   $
 
   dove:
@@ -639,9 +639,7 @@ dove:
   Calcolando il gradiente rispetto al peso $w_2$:
   $
     partial(L)/partial(w_2) = partial(L)/partial(hat(y)) dot partial(hat(y))/partial(w_2)\
-
     (hat(y)-y) dot a
-
   $
 
 
@@ -689,7 +687,7 @@ $
 ]
 
 #esempio()[
-  
+
   Consideriamo $F: R^2 -> R^2$ definita da:
   $
     F(x, y) = vec(f_1(x, y), f_2(x, y)) = vec(x^2 + y, x y)
@@ -762,8 +760,7 @@ $
 Il gradiente di $h$ (rispetto all'input $x$, ovvero $h^'$) è dato dal prodotto dello Jacobiano di $f$ e del gradiente di $g$:
 $
   h^' = gradient_x (g)= ((partial g)/(partial f_1) dot, dots, dot (partial g)/(partial f_m))^T\
-
-  underbrace(J_f^T, n times m) dot underbrace(h^',m times 1) =  mat(
+  underbrace(J_f^T, n times m) dot underbrace(h^', m times 1) = mat(
     (partial f_1)/(partial x_1), (partial f_2)/(partial x_1), dots, (partial f_m)/(partial x_1);
     (partial f_1)/(partial x_2), (partial f_2)/(partial x_2), dots, (partial f_m)/(partial x_2);
     dots.v, dots.v, dots.down, dots.v;
@@ -775,16 +772,16 @@ $
 
 #informalmente()[
   - $f$ è l'output di un layer con $m$ neuroni (un vettore).
-  
+
   - $g$ è la funzione di Loss finale che prende tutti questi output e calcola un numero unico (l'errore scalare $h$).
 
   - Il gradiente $gradient(g)$, è un vettore di dimensione $m$ che contiene l'errore per ciascuno degli $m$ neuroni di output.
 
   - Lo Jacobiano $J_f$ è una matrice che descrive come ogni input $x_j$ influenza ogni output $f_i$.
 
-il vettore risultante $J_f^T dot gradient(g)$ ci dice come ogni input $x_j$ contribuisce all'errore totale, permettendoci di aggiornare i pesi del layer precedente in modo efficace durante la backpropagation.
+  il vettore risultante $J_f^T dot gradient(g)$ ci dice come ogni input $x_j$ contribuisce all'errore totale, permettendoci di aggiornare i pesi del layer precedente in modo efficace durante la backpropagation.
 
-In questo caso, la chain rule serve a  raccogliere tutti i pezzetti di errore che provengono da tanti neuroni successivi diversi ($m$) e sommarli correttamente per capire come aggiornare un singolo neurone precedente ($n$). Senza la matrice jacobiana, il neurone $x_1$ non saprebbe quale segnale di errore ascoltare, perché è collegato a mille cose diverse contemporaneamente.
+  In questo caso, la chain rule serve a  raccogliere tutti i pezzetti di errore che provengono da tanti neuroni successivi diversi ($m$) e sommarli correttamente per capire come aggiornare un singolo neurone precedente ($n$). Senza la matrice jacobiana, il neurone $x_1$ non saprebbe quale segnale di errore ascoltare, perché è collegato a mille cose diverse contemporaneamente.
 ]
 
 Se si avessero ad esempio $3$ layer:
@@ -815,27 +812,383 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
 ]
 
 #esempio()[
-  Consideriamo una rete neurale con due layer lineari:
-
-  - Layer 1: $z = W_1 x in R^m$ (con $x in R^n$)
-  - Layer 2: $y = W_2 z in R^k$ (con $z in R^m$)
-
-  Per calcolare $(partial y)/(partial x)$, usiamo la chain rule:
+  Dato un vettore di input $overline(x) = (x_1, x_2) in R^2$ e due funzioni $f$ e $g$, dove:
   $
-    (partial y)/(partial x) = (partial y)/(partial z) dot (partial z)/(partial x) = W_2 dot W_1
+    f: R^2 -> R^2 \
+    f(overline(x)) = vec(x_1^2+x_2, x_1 x_2) = vec(u, v)\
+    g: R^2 -> R \
+    g(u,v) = u^2 - 2v
   $
-
-  Lo Jacobiano della composizione è il prodotto delle matrici dei pesi:
+  Calcoliamo la funzione $h(overline(x)) = g(f(overline(x)))$:
   $
-    J_(y,x) = W_2 W_1 in R^(k times n)
+    J_f = mat(
+      (partial f_1) / (partial x_1), (partial f_1) / (partial x_2);
+      (partial f_2) / (partial x_1), (partial f_2) / (partial x_2);
+    ) = mat(
+      2x_1, 1;
+      x_2, x_1
+    )\
+    gradient g= vec((partial g)/ (partial u), (partial g)/ (partial v)) = vec(2u, -2)\
+    J_f^T dot gradient g = mat(
+      2x_1, x_1;
+      1, x_1
+    ) dot vec(2u, -2) = vec(
+      4x_1^3 - 2x_2 + 4x_1^2x_2,
+      2x_1^2-2x_1+2x_2
+    )
   $
 ]
 
 #attenzione()[
-  *Importanza per la Backpropagation*:
-
-  Durante la backpropagation, il gradiente della loss viene propagato all'indietro attraverso la rete moltiplicando ripetutamente gli Jacobiani dei vari layer. Questo è computazionalmente efficiente grazie alla struttura matriciale degli Jacobiani.
+  Durante la backpropagation, il gradiente della loss viene propagato all'indietro attraverso la rete moltiplicando ripetutamente gli Jacobiani dei vari layer. Questo è computazionalmente efficiente grazie alla *struttura matriciale degli Jacobiani*.
 ]
+
+== Esempio completo
+
+#esempio()[
+  Supponiamo di avere un modello di *classificazione binaria* (comunemente chiamato *regressione logistica*) dove il dataset è dato da:
+  $
+    D = {(x_i, y_i)}_(i=1)^N\
+    "dove" x_i in R^D, y_i in {0,1}
+  $
+
+  #nota()[
+    *Terminologia*: Nonostante il nome "regressione logistica", si tratta di un algoritmo di *classificazione*, non di regressione!
+
+    - *Input*: features $x_i in R^D$ (vettori continui)
+    - *Output*: etichette $y_i in {0, 1}$ (classi discrete)
+    - Il termine "regressione" deriva dal fatto che si usa una combinazione lineare (regressione) seguita dalla funzione logistica (sigmoide)
+    - L'obiettivo è *classificare* gli esempi in due categorie, non predire valori continui
+  ]
+
+  Il modello $z$ è dunque la funzione:
+  $
+    z = mr(W)^T mb(x) + mr(b)
+  $
+  Dove $mr(W) in R^D$ e $mr(b) in R$ sono i parametri che il modello deve apprendere. In particolare vogliamo il separatore che massimizzi la distanza tra le due classi.
+
+  #figure(
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Griglia di sfondo
+      for i in range(-4, 6) {
+        line((i, -4), (i, 5), stroke: (paint: gray.lighten(60%), thickness: 0.5pt))
+      }
+      for i in range(-4, 6) {
+        line((-4, i), (5, i), stroke: (paint: gray.lighten(60%), thickness: 0.5pt))
+      }
+
+      // Assi cartesiani
+      line((-4, 0), (5, 0), stroke: (paint: rgb("#00bfff"), thickness: 2pt), mark: (end: ">"))
+      line((0, -4), (0, 5), stroke: (paint: rgb("#00bfff"), thickness: 2pt), mark: (end: ">"))
+
+      // Label assi
+      content((5.3, 0), text(size: 12pt, fill: rgb("#00bfff"), weight: "bold", $z_1$))
+      content((0, 5.3), text(size: 12pt, fill: rgb("#4ade80"), weight: "bold", $z_2$))
+
+      // Iperpiano separatore (linea viola)
+      line((-3.5, 4), (4.5, -3), stroke: (paint: rgb("#a855f7"), thickness: 3pt))
+
+      // Equazione dell'iperpiano
+      content((-1.8, 3.8), text(
+        size: 11pt,
+        fill: rgb("#a855f7"),
+        weight: "bold",
+        $w^T z + b = 0$,
+      ))
+
+
+      // Etichetta "separatore lineare"
+      content((3.5, -3.2), text(
+        size: 10pt,
+        fill: rgb("#fbbf24"),
+        weight: "bold",
+        [separatore\ lineare!],
+      ))
+
+      // Punti classe 1 (gialli) - parte superiore destra
+      let class1_points = (
+        (1, 2),
+        (1.5, 2.5),
+        (2, 3),
+        (2.5, 2.8),
+        (3, 3.5),
+        (3.5, 3),
+        (4, 4),
+        (1.8, 1.8),
+        (2.8, 2.5),
+        (3.2, 4.2),
+        (1.2, 1.5),
+        (2.3, 3.8),
+        (3.8, 3.8),
+        (4.2, 3.2),
+        (1.6, 2.2),
+      )
+
+      for pt in class1_points {
+        circle(pt, radius: 0.12, fill: rgb("#fbbf24"), stroke: none)
+      }
+
+      // Punti classe 0 (rossi) - parte inferiore sinistra
+      let class0_points = (
+        (-2, -1),
+        (-2.5, -1.5),
+        (-3, -2),
+        (-1.5, -0.5),
+        (-3.5, -2.5),
+        (-2.8, -3),
+        (-1.8, -1.2),
+        (-3.2, -1.8),
+        (-2.2, -2.5),
+        (-1.2, -0.8),
+        (-3.8, -3.2),
+        (-2.6, -0.8),
+        (-1.6, -1.8),
+        (-3.4, -1.2),
+        (-2, -2.8),
+      )
+
+      for pt in class0_points {
+        circle(pt, radius: 0.12, fill: rgb("#f87171"), stroke: none)
+      }
+
+      // Punti erroneamente classificati (cerchiati)
+      // Errore classe 1 (giallo sotto la linea)
+      let errors_class1 = ((1.2, -0.5), (1.8, 0.2), (2.5, -0.8))
+      for pt in errors_class1 {
+        circle(pt, radius: 0.12, fill: rgb("#fbbf24"), stroke: none)
+        circle(pt, radius: 0.35, stroke: (paint: rgb("#fbbf24"), thickness: 1.5pt, dash: "dashed"), fill: none)
+      }
+
+      // Errore classe 0 (rosso sopra la linea)
+      let errors_class0 = ((2.8, 2), (3.5, 1.2))
+      for pt in errors_class0 {
+        circle(pt, radius: 0.12, fill: rgb("#f87171"), stroke: none)
+        circle(pt, radius: 0.35, stroke: (paint: rgb("#f87171"), thickness: 1.5pt, dash: "dashed"), fill: none)
+      }
+
+      // Freccia ERRORE che punta a un punto sbagliato
+      line((-2.5, -3), (1.0, -0.7), mark: (end: ">"), stroke: (paint: rgb("#fbbf24"), thickness: 2pt, dash: "dashed"))
+      content((-2.8, -3.3), text(
+        size: 11pt,
+        fill: rgb("#fbbf24"),
+        weight: "bold",
+        [ERRORE!],
+      ))
+    }),
+    caption: [Regressione logistica binaria: classificazione di punti in due classi (gialli e rossi) tramite un iperpiano separatore $w^T z + b = 0$. I punti cerchiati rappresentano esempi classificati erroneamente dal modello lineare.],
+  )
+
+  L'*iperpiano separatore* è definito dall'equazione:
+  $
+    w_1 z_1 + w_2 z_2 = -b
+  $
+  che nel piano 2D rappresenta una retta. I punti vengono classificati in base a quale lato dell'iperpiano si trovano:
+  - Se $w^T z + b > 0$: classe 1 (giallo)
+  - Se $w^T z + b < 0$: classe 0 (rosso)
+
+  #attenzione()[
+    Un modello *puramente lineare* può commettere errori quando i dati non sono linearmente separabili, come mostrato dai punti cerchiati nel grafico. La funzione *sigmoide* $sigma(z)$ trasforma l'output lineare in una probabilità, permettendo al modello di gestire meglio l'incertezza nelle zone di confine.
+  ]
+
+  La funzione di *loss* utilizzata può essere la cross-entropy o NLL (Negative Log Likehood). Chiamo con $p$ e $q$ le seguenti probabilità:
+  $
+    P(mr(y=1) | x) = mr(p)\
+    P(mb(y=0)| x) = 1-p = mb(q)
+  $
+  La funzione di loss è calcolata nel seguente modo (le predizioni del modello $hat(y) = z$ vengono passati alla funzione $sigma$):
+  $
+    L(y, hat(y)) & = -[y log hat(y) + (1-y)(1-log hat(y))] \
+                 & = - y log sigma(z) - (1-y)(1-log sigma(z))
+  $
+  La training loss è data dalla somma delle loss per tutti i dati del dataset ($N$):
+  $
+    L = -1/N sum_(i=1)^n [y_i log sigma(z) - (1-y_i)(1-log sigma(z))]
+  $
+
+  === Computation Graph (ad alto livello)
+
+  Il grafo computazionale rappresenta la sequenza di operazioni dal calcolo del modello fino alla loss:
+
+  #figure(
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Stili
+      let input-style = (stroke: black, fill: green.lighten(70%), radius: 0.4)
+      let param-style = (stroke: black, fill: purple.lighten(70%), radius: 0.4)
+      let op-style = (stroke: black, fill: red.lighten(70%))
+      let node-style = (stroke: black, fill: yellow.lighten(80%), radius: 0.4)
+      let output-style = (stroke: black, fill: green.lighten(60%), radius: 0.4)
+
+      // Nodi input
+      circle((-5, 0), ..input-style, name: "x")
+      content("x", text(size: 11pt, weight: "bold", $x$), fill: green.darken(40%))
+
+      circle((-3, -1), ..param-style, name: "w")
+      content("w", text(size: 11pt, weight: "bold", $w$), fill: purple.darken(20%))
+
+      // Operazione z = wx + b
+      rect((-2, -0.5), (rel: (1.2, 0.8)), ..op-style, name: "z-op")
+      content((-1.4, -0.1), text(size: 10pt, weight: "bold", $z$), fill: white)
+
+      // Nodo z
+      circle((0, 0), ..node-style, name: "z")
+      content("z", text(size: 11pt, weight: "bold", $z$), fill: orange.darken(20%))
+
+      // Operazione theta(z)
+      rect((1.2, -0.5), (rel: (1.2, 0.8)), ..op-style, name: "theta")
+      content((1.8, -0.1), text(size: 10pt, weight: "bold", $theta(z)$), fill: white)
+
+      // Nodo predizione
+      circle((3.5, 0), ..node-style, name: "pred")
+      content("pred", text(size: 11pt, weight: "bold", $hat(y)$), fill: orange.darken(20%))
+
+      // Nodo target y
+      circle((3.5, 1.5), ..input-style, name: "y")
+      content("y", text(size: 11pt, weight: "bold", $y$), fill: green.darken(40%))
+
+      // Operazione Loss L(ŷ,y)
+      rect((4.7, 0.3), (rel: (1.5, 0.8)), ..op-style, name: "loss")
+      content((5.45, 0.7), text(size: 9pt, weight: "bold", $L(hat(y), y)$), fill: white)
+
+      // Nodo loss finale
+      circle((7.5, 0.5), ..output-style, name: "L")
+      content("L", text(size: 11pt, weight: "bold", $L$), fill: green.darken(40%))
+
+      // Archi
+      line("x", "z-op", mark: (end: ">"), stroke: 1.5pt)
+      line("w", "z-op", mark: (end: ">"), stroke: 1.5pt)
+      line("z-op", "z", mark: (end: ">"), stroke: 1.5pt)
+      line("z", "theta", mark: (end: ">"), stroke: 1.5pt)
+      line("theta", "pred", mark: (end: ">"), stroke: 1.5pt)
+      line("pred", "loss", mark: (end: ">"), stroke: 1.5pt)
+      line("y", "loss", mark: (end: ">"), stroke: 1.5pt)
+      line("loss", "L", mark: (end: ">"), stroke: 1.5pt)
+
+      // Annotazioni
+      content((0, -2), text(size: 9pt, style: "italic", fill: purple.darken(20%), [modello da apprendere]))
+      line((0, -1.8), (-3, -1.4), stroke: (paint: purple.darken(20%), dash: "dashed"))
+
+
+      // Titolo
+      content(
+        (-5, 2.5),
+        text(
+          size: 11pt,
+          weight: "bold",
+          fill: yellow.darken(50%),
+          [],
+        ),
+        anchor: "west",
+      )
+    }),
+    caption: [Grafo computazionale ad alto livello per la classificazione binaria. Il modello da apprendere (parametri $w$) produce una predizione $hat(y)$ che viene confrontata con il target $y$ tramite la loss $L$.],
+  )
+
+  === Elementi Computazionali (singole operazioni)
+
+  Espandendo il grafo precedente, ogni operazione viene scomposta nelle sue parti elementari con le relative *derivate parziali* per la backpropagation:
+
+  #figure(
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Nodo u = w × x
+      rect((-4.8, -0.6), (rel: (1.6, 1.2)), stroke: black)
+      content((-4, 0.1), text(size: 9pt, weight: "bold", $u = w times x$))
+
+      // Input x e w
+      line((-5.5, 0.2), (-4.8, 0.1), mark: (end: ">"), stroke: 1pt)
+      content((-5.8, 0.2), text(size: 12pt, $x$), fill: purple.darken(20%))
+
+      line((-5.5, -0.2), (-4.8, -0.1), mark: (end: ">"), stroke: 1pt)
+      content((-5.8, -0.2), text(size: 12pt, $w$), fill: purple.darken(20%))
+
+
+      // Nodo z = u + b
+      rect((-2.3, -0.6), (rel: (1.6, 1.2)), stroke: black)
+      content((-1.5, 0.1), text(size: 10pt, weight: "bold", $z = u + b$))
+
+      // Input u e b
+      line((-3.2, 0), (-2.3, 0), mark: (end: ">"), stroke: 1pt)
+      content((-2.8, 0.3), text(size: 12pt, $u$))
+
+      line((-1.5, -1.4), (-1.5, -0.5), mark: (end: ">"), stroke: 1pt)
+      content((-1.2, -1.4), text(size: 12pt, $b$), fill: purple.darken(20%))
+
+
+      // Nodo ŷ = θ(z)
+      rect((0.2, -0.6), (rel: (1.6, 1.2)), stroke: black)
+      content((1, 0.1), text(size: 10pt, weight: "bold", $hat(y) = theta(z)$))
+
+      // Input z
+      line((-0.7, 0), (0.2, 0), mark: (end: ">"), stroke: 1pt)
+      content((-0.3, 0.3), text(size: 12pt, $z$))
+
+
+      // Nodo L
+      rect((2.7, -0.6), (rel: (1.6, 1.2)), stroke: black)
+      content((3.5, 0.), text(size: 10pt, weight: "bold", $L(hat(y), y)$))
+
+      // Input ŷ e y
+      line((1.8, 0), (2.7, 0), mark: (end: ">"), stroke: 1pt)
+      content((2.3, 0.3), text(size: 12pt, $hat(y)$))
+
+      line((3.5, 1), (3.5, 0.5), mark: (end: ">"), stroke: 1pt)
+      content((3.8, 1.2), text(size: 12pt, $y$), fill: green.darken(30%))
+
+      // Chain rule evidenziata
+      rect((-5, -3.5), (rel: (8.8, 1)), stroke: (paint: rgb("#f39c12"), thickness: 2pt))
+      content((-0.6, -3.1), text(
+        size: 14pt,
+        weight: "bold",
+        $(partial L)/(partial mr(w)) = (partial u)/(partial w) dot (partial z)/(partial u) dot (partial hat(y))/(partial z) dot (partial L)/(partial hat(y))$,
+      ))
+
+      rect((-5, -4.8), (rel: (8.8, 1)), stroke: (paint: rgb("#f39c12"), thickness: 2pt))
+      content((-0.6, -4.4), text(
+        size: 14pt,
+        weight: "bold",
+        $(partial L)/(partial mr(b)) = (partial z)/(partial b) dot (partial hat(y))/(partial z) dot (partial L)/(partial hat(y))$,
+      ))
+
+      // Titolo
+      content(
+        (-5, 2),
+        text(
+          size: 11pt,
+          weight: "bold",
+          fill: yellow.darken(50%),
+          [Elementi computazionali (singola ops):],
+        ),
+        anchor: "west",
+      )
+    }),
+    caption: [Grafo computazionale dettagliato mostrando le singole operazioni elementari e le rispettive derivate parziali. La chain rule permette di calcolare i gradienti rispetto ai parametri $w$ e $b$ moltiplicando le derivate parziali lungo il percorso.],
+  )
+
+  #nota()[
+    *Backpropagation tramite Chain Rule*:
+
+    Per calcolare il gradiente della loss rispetto ai parametri, moltiplichiamo le derivate parziali lungo il percorso nel grafo (dalla loss verso i parametri):
+
+    $
+      (partial L)/(partial w) = underbrace((partial u)/(partial w), "locale") dot underbrace((partial z)/(partial u) dot (partial hat(y))/(partial z) dot (partial L)/(partial hat(y)), "upstream")
+    $
+
+    Ogni nodo del grafo:
+    - *Forward pass*: calcola l'output dato l'input
+    - *Backward pass*: calcola la derivata locale e la propaga all'indietro
+  ]
+]
+
+
+
+
+
+
 
 == Grafi Computazionali e Differenziazione Automatica
 
