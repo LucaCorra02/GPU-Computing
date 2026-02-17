@@ -1194,6 +1194,183 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
 
 I framework moderni di deep learning (PyTorch, TensorFlow) implementano la *differenziazione automatica* (automatic differentiation, o *autograd*) attraverso *grafi computazionali*.
 
+Proprietà dell'autograd:
+- Le *derivate* calcolate sono *esatte* (non delle approsimazioni)
+- Funziona per funzioni implementabili attraverso programmi
+
+=== SGD Stocastic Gradient Descent
+
+Attraverso l'algoritmo *SGD*, il gradiente *non* viene computato per ogni elemento del dataset ma viene calcolato su un *batch* (sottoinsieme) di sample estratti casualmente.
+
+Il batch è estratto random dagli esempi di training. L'aggiornamento dei pesi adotta la seguente regola:
+$
+  w_(t+1) = w_t - underbrace(eta, "learning"\ "rate") gradient L (w_t; x_i, y_i)
+$
+Dove $(x_i, y_i)$ si riferiscono a un singolo sample random. L'update dei pesi nel caso di *mini-batch* segue la seguente regola: ad ogni iterazione $t$ viene estratto un mini-batch $Beta_t$:
+$
+  w_(t+1) = w_t - eta 1/(|Beta_t|) sum_(n in B_t) gradient_w mr(l)(f(x_n;w_t),y_n)
+$
+
+#nota()[
+  L'algoritmo è stocastic in quanto ogni aggiornamento dei pesi usa un sample random, viene introdotto del *rumore* nel calcolo del gradiente
+]
+
+La discesa del gradiente calcolata sull'*intero dataset* (Batch Gradient Descent) è molto più lineare e *smooth*, ma è computazionalmente costosa. La SGD introduce *rumore* nel processo di ottimizzazione, con vantaggi significativi:
+- L'update dei pesi è molto più *veloce* (calcolo su pochi sample)
+- Il *rumore stocastico* offre proprietà benefiche:
+  - Capacità di _uscire_ dai minimi locali
+  - Capacità di _uscire_ dai saddle points
+- Fornisce una *generalizzazione migliore* del modello
+
+#figure(
+  grid(
+    columns: 2,
+    column-gutter: 1em,
+    // Batch Gradient Descent
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Titolo
+      content((0, 4.2), text(size: 11pt, weight: "bold", [Batch Gradient Descent]), anchor: "center")
+
+      // Curve di livello (come contour)
+      let levels = (0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2)
+      for lev in levels {
+        let r = lev * 1.2
+        // Forma ellittica (minimo al centro)
+        bezier(
+          (-r * 0.7, -r * 0.3),
+          (r * 0.7, -r * 0.3),
+          (-r * 0.5, r * 0.4),
+          (r * 0.5, r * 0.4),
+          stroke: (paint: blue.lighten(60%), thickness: 0.8pt),
+        )
+        bezier(
+          (r * 0.7, -r * 0.3),
+          (-r * 0.7, -r * 0.3),
+          (r * 0.5, -r * 0.4),
+          (-r * 0.5, -r * 0.4),
+          stroke: (paint: blue.lighten(60%), thickness: 0.8pt),
+        )
+      }
+
+      // Percorso smooth verso il minimo
+      let path-points = (
+        (-2.5, 1.8),
+        (-2.2, 1.3),
+        (-1.9, 0.9),
+        (-1.6, 0.5),
+        (-1.3, 0.3),
+        (-1.0, 0.15),
+        (-0.7, 0.08),
+        (-0.4, 0.04),
+        (-0.2, 0.02),
+        (0, 0),
+      )
+
+      for i in range(path-points.len() - 1) {
+        line(path-points.at(i), path-points.at(i + 1), mark: (end: ">"), stroke: (paint: blue, thickness: 2pt))
+      }
+
+      // Punto iniziale (Start)
+      circle((-2.5, 1.8), radius: 0.12, fill: red, stroke: red)
+      content((-2.5, 2.1), text(size: 9pt, fill: red, weight: "bold", [Start]))
+
+      // Minimo
+      circle((0, 0), radius: 0.12, fill: green, stroke: green)
+      content((0, -0.35), text(size: 9pt, fill: green.darken(20%), weight: "bold", [Minimum]))
+
+      // Etichetta percorso
+      content((1.8, 0.5), text(size: 8pt, fill: blue.darken(20%), style: "italic", [Consistent]), anchor: "west")
+      content((1.8, 0.15), text(size: 8pt, fill: blue.darken(20%), style: "italic", [Update]), anchor: "west")
+
+      // Descrizione sotto
+      content((0, -2.8), text(size: 8pt, fill: rgb("#8B0000"), weight: "bold", [Whole Dataset]), anchor: "center")
+      content(
+        (0, -3.1),
+        text(size: 7pt, fill: gray.darken(30%), [Smooth but computationally expensive.]),
+        anchor: "center",
+      )
+    }),
+
+    // Stochastic Gradient Descent
+    cetz.canvas({
+      import cetz.draw: *
+
+      // Titolo
+      content((0, 4.2), text(size: 11pt, weight: "bold", [Stochastic Gradient Descent (SGD)]), anchor: "center")
+
+      // Curve di livello (identiche)
+      let levels = (0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2)
+      for lev in levels {
+        let r = lev * 1.2
+        bezier(
+          (-r * 0.7, -r * 0.3),
+          (r * 0.7, -r * 0.3),
+          (-r * 0.5, r * 0.4),
+          (r * 0.5, r * 0.4),
+          stroke: (paint: blue.lighten(60%), thickness: 0.8pt),
+        )
+        bezier(
+          (r * 0.7, -r * 0.3),
+          (-r * 0.7, -r * 0.3),
+          (r * 0.5, -r * 0.4),
+          (-r * 0.5, -r * 0.4),
+          stroke: (paint: blue.lighten(60%), thickness: 0.8pt),
+        )
+      }
+
+      // Percorso noisy (zigzag) verso il minimo
+      let noisy-path = (
+        (-2.5, 1.8),
+        (-2.1, 1.5),
+        (-2.3, 1.1),
+        (-1.8, 0.9),
+        (-1.9, 0.6),
+        (-1.5, 0.7),
+        (-1.3, 0.4),
+        (-1.5, 0.3),
+        (-1.1, 0.25),
+        (-0.9, 0.35),
+        (-0.7, 0.15),
+        (-0.8, 0.1),
+        (-0.5, 0.12),
+        (-0.3, 0.08),
+        (-0.35, 0.05),
+        (-0.15, 0.06),
+        (-0.05, 0.03),
+        (0.05, 0.01),
+        (0, 0),
+      )
+
+      for i in range(noisy-path.len() - 1) {
+        line(noisy-path.at(i), noisy-path.at(i + 1), mark: (end: ">"), stroke: (paint: blue, thickness: 2pt))
+      }
+
+      // Punto iniziale (Start)
+      circle((-2.5, 1.8), radius: 0.12, fill: red, stroke: red)
+      content((-2.5, 2.1), text(size: 9pt, fill: red, weight: "bold", [Start]))
+
+      // Minimo
+      circle((0, 0), radius: 0.12, fill: green, stroke: green)
+      content((0, -0.35), text(size: 9pt, fill: green.darken(20%), weight: "bold", [Minimum]))
+
+      // Etichetta percorso
+      content((1.8, 0.5), text(size: 8pt, fill: blue.darken(20%), style: "italic", [Noisy]), anchor: "west")
+      content((1.8, 0.15), text(size: 8pt, fill: blue.darken(20%), style: "italic", [Updates]), anchor: "west")
+
+      // Descrizione sotto
+      content((0, -2.8), text(size: 8pt, fill: rgb("#8B0000"), weight: "bold", [Minibatches]), anchor: "center")
+      content(
+        (0, -3.1),
+        text(size: 7pt, fill: gray.darken(30%), [Noisy but efficient and generalizes better.]),
+        anchor: "center",
+      )
+    }),
+  ),
+  caption: [Confronto tra *Batch Gradient Descent* (sinistra) e *Stochastic Gradient Descent* (destra). Il Batch GD segue un percorso smooth calcolando il gradiente sull'intero dataset, mentre SGD introduce rumore usando mini-batch casuali, permettendo di uscire da minimi locali e convergere più velocemente.],
+)
+
 === Cos'è un Grafo Computazionale
 
 Un *grafo computazionale* è un grafo orientato aciclico (DAG - Directed Acyclic Graph) che rappresenta la sequenza di operazioni matematiche eseguite durante il calcolo di una funzione.
@@ -1201,6 +1378,8 @@ Un *grafo computazionale* è un grafo orientato aciclico (DAG - Directed Acyclic
 *Componenti del grafo*:
 - *Nodi*: rappresentano *valori* (input, parametri, risultati intermedi, output)
 - *Archi*: rappresentano *operazioni* matematiche ($+, -, times, div, "exp", "log"$, ecc.)
+
+I gradienti vengono *accumulati* nell'attributo `.grad` dei tensori. La funzione di `backward()` permette di attraversare il grafo per calcolare i gradienti.
 
 #nota()[
   Il grafo cattura la *struttura della funzione* e le *dipendenze* tra le variabili. Questo permette di calcolare automaticamente i gradienti usando la chain rule.
@@ -1290,14 +1469,14 @@ Il grafo viene costruito *dinamicamente* durante l'esecuzione del codice (*dynam
       line("pow", "y", mark: (end: ">"), stroke: 1.5pt)
 
       // Legenda
-      rect((3, 6), (rel: (2.5, 1.8)), stroke: 1pt)
+      rect((3, 6.), (rel: (2.5, 1.9)), stroke: 1pt)
       content((4.25, 7.5), text(size: 9pt, weight: "bold", [Legenda]))
-      circle((3.3, 7), radius: 0.2, ..param-style)
-      content((4, 7), text(size: 8pt, [Parametri/Input]), anchor: "west")
-      circle((3.3, 6.5), radius: 0.2, ..node-style)
-      content((4, 6.5), text(size: 8pt, [Nodi intermedi]), anchor: "west")
+      circle((3.3, 7.2), radius: 0.2, ..param-style)
+      content((3.6, 7.2), text(size: 8pt, [Parametri/Input]), anchor: "west")
+      circle((3.3, 6.7), radius: 0.2, ..node-style)
+      content((3.6, 6.7), text(size: 8pt, [Nodi intermedi]), anchor: "west")
       rect((3.2, 6.1), (rel: (0.3, 0.2)), ..op-style)
-      content((4, 6.2), text(size: 8pt, [Operazioni]), anchor: "west")
+      content((3.6, 6.2), text(size: 8pt, [Operazioni]), anchor: "west")
     }),
     caption: [Grafo computazionale per $y = (x times w + b)^2$. I nodi verdi sono parametri con `requires_grad=True`, i nodi blu sono valori intermedi, e i nodi arancioni sono operazioni.],
   )
@@ -1354,7 +1533,7 @@ Il grafo computazionale supporta due modalità di attraversamento:
     (d y)/(d b) & = (d y)/(d z) dot (d z)/(d b) = 14 dot 1 = 14
   $
 
-  PyTorch calcola automaticamente questi valori esplorando il grafo all'indietro!
+  PyTorch calcola automaticamente questi valori esplorando il grafo all'indietro
 ]
 
 === Accumulazione dei Gradienti
@@ -1365,28 +1544,6 @@ Un aspetto importante della differenziazione automatica in PyTorch è l'*accumul
   Per default, PyTorch *accumula* i gradienti nel campo `.grad` di ogni tensore. Questo significa che chiamare `.backward()` multiple volte *somma* i nuovi gradienti a quelli esistenti.
 
   *Conseguenza pratica*: Nel training loop è necessario chiamare `optimizer.zero_grad()` o `tensor.grad.zero_()` prima di ogni backward pass per pulire i gradienti dell'iterazione precedente.
-]
-
-#esempio()[
-  ```python
-  x = torch.tensor([1.0], requires_grad=True)
-
-  # Prima backward
-  y1 = x ** 2
-  y1.backward()
-  print(x.grad)  # tensor([2.])  (dy1/dx = 2x = 2)
-
-  # Seconda backward SENZA azzerare
-  y2 = x ** 3
-  y2.backward()
-  print(x.grad)  # tensor([5.])  (2 + 3 = 5, accumula!)
-
-  # Terza backward CON azzeramento
-  x.grad.zero_()
-  y3 = x ** 4
-  y3.backward()
-  print(x.grad)  # tensor([4.])  (corretto, gradiente pulito)
-  ```
 ]
 
 === Vantaggi della Differenziazione Automatica
@@ -1410,195 +1567,198 @@ La differenziazione automatica attraverso grafi computazionali offre numerosi va
   Questo è un risultato notevole: calcolare *tutti* i gradienti costa circa quanto calcolare la funzione stessa.
 ]
 
-== Cos'è un graidente
+== Training Loop in PyTorch
 
-Partiamo da funzioni definite su uno spazio $D$ (input vettori) che mappano in un reale.
+Il training di una rete neurale in PyTorch segue un pattern standard che combina tutti i concetti visti finora: forward pass, calcolo della loss, backpropagation e aggiornamento dei parametri.
 
-$gradient$ è un operatore che viene applicato a una funzioni $f$ (rappresnta una rete neurale):
-$
-  gradient f: R^D->R^D
-$
-#informalmente[
-  un gradiente è un vettore di derivate parziali.
-  Applichiamo la definizione di derivata solo che consideriamo il tasso di variazioni su una singola variabile, tenendo costanti le altri.
-]
-Si fa difierenziazione solo rispetto a una variabile ecc //aggiugnere formula
+=== Template Standard
 
-#esempio()[
-  $
-    f: R^2 -> R
-  $
-  Otteniamo un campo vettoriale:
-  $
-    delta f(x) = (alpha f) / (alpha x_1) hat(i)+ (alpha f) / (alpha x_2) hat(j)
-  $
-  Il grafico 3d ci dice che dato un vettore che parte in un punto ci dice il grado di pendenza di quella funzione. I vettori sono più o meno intesi (modulo del vettore). i vettori hanno direzioni pendenze e intesità diverse man mano che mi muovo nel dominio
-]
+Solitamente viene utilizzato il seguente *template* per il training loop:
+```python
+criterion = loss_func()
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
-Aggiungee latro esempio con due variabili.
+for epoch in range(n_epochs):
+    for data, target in dataloader:  # data è un batch
+        # 1. Forward Pass
+        output = model(data)
 
-=== Curve di livello
+        # 2. Calcolo Loss
+        loss = criterion(output, target)
 
-Sono importanti perchè quando usiamo il gradiente per raggiungere un punto di minimo in una funzione, usiamo le curve di livello. Un passo viene fatto da una cruva di livello ad un altra curva di livello (scegliendo una certa direzioni). Posso dstinguere le curve di livello in base a quelle che mi favoriscono la discesa verso il basso.
+        # 3. Azzeramento Gradienti
+        optimizer.zero_grad()  # Pulisce i buffer dei gradienti
 
-//aggiungere immagine campo vettoriale generato dal paraboloide
+        # 4. Backward Pass (Backpropagation)
+        loss.backward()  # Calcola i gradienti automaticamente
 
-Il gradiente in ogni punto della funzione è perpendicolare alla tangente della curva di livello. Il gradiente viene interpretato come direzione
-
-*Teo*: (direzione di massima discesa) //aggiungere
-#informalmente()[
-  Il segno serve altrimenti andre in salita
-]
-Lo sviluppo di taylor speiga il perchè:
-$
-  f(x) = f(x_0)+ gradient (f_x_0)^T dot (x-x_0)
-$
-#informalmente()[
-  La funzione in un punto intorno da $x_0$. Se voglio usare la funzione di taylor per approssimare l'intorno di un punto devo ricorrere al gradiente moltiolicato (prodotto scalre)
-
-  //riguardare
-  Voglio valutare la funzione in x scritto come lo scostamento di x dal bho.\
-  Vado a sostituire nella formula
-  $
-    x_i - alpha gradient(f_(x_o))
-  $
-]
-Mi muovo verso un valore del dominio in cui la funzione ha valore minore. La migliore direzione è quella che coincide con $gradient f(X_0)$. Per il teorema se scelgo $d^*$ in questo modo ho una discesa ottimale in qualsiasi putno della funzione
-
-=== algoritmo
-
-//agiungere algoritmo
-Il passo è $alpha_k$ (learning rate), potrebbe variari tutte le volte che ho un passo di iterazione tramite degli algoritmi
-
-Criteri di stop. Vogliamo arrivare al minimo assoluto $gradient f(x_k) = 0$. Questa equazione è soddisfatta da un minimo relativo o minimi locali,oppure in caso di grafico a sella ho una variabile che mi fa salire e l'altra scendere.
-
-Dobbiamo fissare una soglia $epsilon$. Se soo sotto la soglia mi fermo:
-
-== Jacobiano
-Quando abbiamo delle funzioni vettore->vettore sono delle funzioni non banali $R^n->R^m$ (layer dei modelli deep).
-
-Lo jacobiano è la generalizzazione del gradiente per le matrici. Ogni componente della funzione $F(hat(x))$ è una funzione $f_x(overline(x)))$ a sua volta(composizoni di funzioni). Il gradiente viene esteso, deve differenziare rispetto alle funzioni e alle variabili:
-
-La prima riga è la raccolta delle derivate parziali per la prima componente della funzione $F$. L'ultima riga è la derivata parziale rispetto all'ultima componente di $F$ grande.
-#esempio()[
-  Date $f_1 = x^2+y$ e $f_2 = x y$, ottengo $2x = (alpha f)/x$
-]
-
-#esempio()[
-  Se prendo la funzione $h = g(overline(f))$. La f (composizoni di funzioni) è una variabile anche se deriva dal calcolo di $f_1(overline(x)), dots, f_k (overline(x))$.
-
-  Se devo calcolare il gradiente di $h$ devo arrivare a moltiplicare lo jacobiao della funzione $f$ per la derivata priam di $g$:
-
-  #esempio()[
-    h è la composione di g e di f, posso dire che $h$ diepende da x, $h(overline(x))=g(f(x)))$.
-
-    Posso usare la composizione in qualche modo //riguardare
-  ]
-]
-=== regola della catena
-
-Se predo due funzioni f e g e la loro composizione è derivabile ottendo $f'(g(x)) = r^k$
-
-Posso fare la compsizione in quanto :$f(x_0)$ produce uan cosa di dim $m$ mentre $g$ prende $m$ e restituisce $k$:
-$
-  g(f(x_o)) -> z in R^k
-$
-
-#attenzione()[
-  per calcolare i gradienti bisogna fare prodotti basati sugli jacobiani
-]
-
-== Loss
-
-Una Loss :
-$
-  R^D -> R
-$
-è una funzione che mappa da $R^D$ a $R$ è l'ultimo step del procedimento visto fino adesso. L'obbiettivo è minimizzare questo funzione considerando il set di parameti $w$ come variabile.
-
-Apllichiamo l'algoritmo di discesa dei gradienti per minimizzare la funzione
-
-== Differenziazione automatica
-
-Implementano il calcolo *esatto* (non approssimato) delle derivate di una funzione, si tratta di un meccanisomo di calcolo dei gradienti.
-
-Vogliamo calcolare il gradiente della funzione loss avendo a disposizione un numero di elementi che mappano l'input sull'output (sono un numero elevato).
-
-Potrei prendere ogni singolo elemento e farlo transistare nel mdoello -> calcolare la predizione -> caloclare l'errore -> modificare. Si tratta dell'approccio ideale. Tuttavia è meno robusto della discesa del gradiente stocastico e computazionalmente costoso
-
-=== Graident stocastic
-
-Scelgo a caso un elemento del dominio e sulal base dell'errore che si comette $L$, modifico i pesi. Un altro approccio più funzionante è basato su batch.
-
-Lavora nel seguente modo:
-$
-  w_t+1 = w_t - n 1 / |B_t| sum_(n in B_t) gradient_w underbrace(l(f(x_n;w_t),y_n), "valore commesso medio")
-$
-Prendo un batch $B$ di tot elementi (piccola rispetto al dataset) e applico la variazione dei pesi sul valor medio di tutti i batch (non sul singolo esempalre)
-
-Quello che succedo è che se prendo il gradiente medio calcolato sul batch è che non riesco ad avere la discesa ottimale in quel punto, tuttavia ho dei vantaggi :
-- Molta velocità, meno computazioni
-- Capacità di fare esapece dei minimi locali (in quanto è più rumoroso)
-
-== Grafo computazionale
-
-PyTorch implementa dietro le quinte autograd. Costuisce un grafo orientato (grafo diretto aicilico) che traccia tutte le operaizoni in tempo reale:
-- I nodi sono le operaizoni ($+, -, *, "/"$)
-- Gli archi sono l'interdipendenza tra questi nodi
-
-Le aprime chiavi `requires_grad=True` associata ai tensori e l'operazione `backward()` ci permettono di fare il forward e modificare i pesi.
-
-I gradienti vengono accumolati, ci sono un pool di gradienti che vengono utilizzati per modificare poi i pesi, vengono accumolati nel campo `.grad` di un tensore. La regola di Differenziazione viene applicata al grafo.
-
-#esempio()[
-  Regressione logistica (regressione per la classificazione).
-  $D={x_i,y_i}$
-
-  Se mi fermo al modello lineare ottengo un iperpiano, commette errori. Se prendo la funzione sigmoide o logistica ci permette di dire che se prendo una soglia (ad esempio $0.5$) ci permette di dire che se la rete emette $z$ (logits) da +/-inifnito la funzione di attivazione li riposta in un dominio più semplice, posso discriminarli in due classi 0 e 1.
-
-  La funione di loos è la cross-entropy.
-
-  Con $y=1$ (label True) mi trovo ad avere $-y log_2 sigma(z)$ se $y=0$ ho la funzinzone $1-log_2 sigma(z)$.
-
-  Grado delle computazioni, prendo in input la variabile $x$ e $w$ (nel caso del forward la $x$ è variabile e $w$ costante, viceversa nella differenziazione). Esse danno forma alla variabile $z$ (ad esempio prodotto). La catenza forma un grafo ad alto livello. L'ultima parte è quella di decisione, il modello esce con dei valori
-
-  //agiungere immagini
-  A partre da $x$ e $w$ viene generata $u = x times w$. A questo punto lo sommo a $b$ (realizzo il livello lineare):
-  $
-    z = u + b
-  $
-  (Composizione di funzioni). In uscita avrò $hat(y) = theta(z)$ e infine calcolo la loss.
-
-  Una volta ottenuto il valore di loos metto in atto la discesa del gradiente con la chain rule. La chain rule è data dalla derivata di tutte le variabili in gioco:
-
-  - $t = (alpha l) / (alpha hat(y))$
-  - $(alpha l) / a(alpha z)$
-  - $(alpha z) / (alpha u)$
-  - $(alpha u) / (alpha w)$
-
-  la deriva di $(alpha L)/(alpha w)$ è data dal prodotto di tutte le derivate.
-]
-
-== SDG in PyTorch
-
-`loss.backward()` fa tutto lui
-
-`optimezer.step()` ci aggiunge una regola di aggiornamento.
-
-```py
-for epoch in range (n_epochs)
-  for data, targat in dataloader:
-    output = model(data)#costruisce un grafo
-    loss = criteration(output, target)
-    optimezer.zero_grad() #pulisce i buffer
-    loss.backward()
-    optimizer.step()#aggiorna i pesi
+        # 5. Aggiornamento Parametri
+        optimizer.step()  # Aggiorna i pesi usando i gradienti
 ```
 
-//aggoungere confronto mini-batch e singolo elemento
-La disce del graideitne su un singolo elemnto alla volta è molto più smooth, tuttavia è molto costosa a livello computazionale.
+#nota()[
+  *Perché `optimizer.zero_grad()`?*
+
+  PyTorch *accumula* i gradienti per default. Senza azzerarli ad ogni iterazione, i gradienti si sommerebbero a quelli delle iterazioni precedenti, portando a risultati errati.
+
+  Questa scelta di design è utile in scenari avanzati (es. gradient accumulation per batch grandi), ma richiede attenzione nel training standard.
+]
 
 
+== Normalizzazione
 
+La normalizzazione è una tecnica fondamentale per stabilizzare e accelerare il training delle reti neurali.
 
+=== Perché Normalizzare?
+
+Le reti neurali si allenano *più velocemente* e in modo *più stabile* quando:
+- Gli input e le attivazioni hanno *media zero*
+- Hanno *varianza comparabile*
+- Evitano *differenze di scala elevate*
+
+*Vantaggi della normalizzazione*:
+- Migliora il *condizionamento dei gradienti*
+- Riduce l'*internal covariate shift*
+- Stabilizza il training
+- Permette learning rate più elevati
+
+=== Input Normalization (Standardizzazione dei Dati)
+
+Data una matrice di input $X in RR^(N times D)$ dove:
+- $N$ = numero di sample
+- $D$ = numero di feature
+- $x_n^i$ = valore della feature $i$ per il sample $n$
+
+*Normalizzazione per feature*:
+$
+  x_n^i <- (x_n^i - mu_i)/(sigma_i)
+$
+
+dove:
+$
+  mu_i = 1/N sum_(n=1)^N x_n^i, quad sigma_i = sqrt(1/N sum_(n=1)^N (x_n^i - mu_i)^2)
+$
+
+*Effetto*:
+- Ogni feature ha *media 0*
+- Ogni feature ha *varianza 1*
+
+```python
+# Normalizzazione in PyTorch
+mean = X.mean(dim=0)  # Media per feature
+std = X.std(dim=0)    # Deviazione standard per feature
+X_normalized = (X - mean) / std
+```
+
+#nota()[
+  In fase di *inferenza*, si usano media e varianza calcolate sul *training set*, non sui nuovi dati.
+]
+
+=== Batch Normalization (BatchNorm)
+
+La *Batch Normalization* normalizza le attivazioni *intermedie* della rete durante il training.
+
+*Algoritmo* (per ogni feature $i$ in un layer):
+
+*Step 1: Normalizzazione sul mini-batch*
+$
+  hat(a)_n^i = (a_n^i - mu_i)/(sqrt(sigma_i^2 + epsilon))
+$
+
+dove:
+- $mu_i, sigma_i^2$ sono calcolati *sul batch corrente*
+- $epsilon$ è una costante piccola per stabilità numerica (es. $10^(-5)$)
+
+*Step 2: Scala e shift apprendibili*
+$
+  tilde(a)_n^i = gamma_i hat(a)_n^i + beta_i
+$
+
+dove $gamma_i, beta_i$ sono *parametri appresi* durante il training.
+
+```python
+import torch.nn as nn
+
+# BatchNorm1d per layer fully-connected
+bn = nn.BatchNorm1d(num_features=128)
+
+# Durante il training
+x = layer(input)      # Attivazioni prima di BN
+x = bn(x)            # Normalizzazione
+x = activation(x)    # Funzione di attivazione
+```
+
+#attenzione()[
+  *Comportamento Train vs Eval*:
+
+  - *Training*: statistiche ($mu, sigma^2$) calcolate sul batch corrente
+  - *Inference*: si usano *running averages* accumulate durante il training
+
+  Importante chiamare `model.eval()` in fase di test!
+]
+
+*Perché BatchNorm funziona?*
+- Riduce l'*internal covariate shift* (cambio di distribuzione delle attivazioni tra layer)
+- Permette *learning rate più alti*
+- Migliora il *flusso dei gradienti*
+- Ha un effetto *regolarizzante* (simile al dropout)
+
+=== Layer Normalization (LayerNorm)
+
+Invece di normalizzare *tra i sample del batch*, LayerNorm normalizza *tra le feature di ogni sample*.
+
+*Per ogni sample $n$*:
+$
+  hat(a)_n^i = (a_n^i - mu_n)/(sqrt(sigma_n^2 + epsilon))
+$
+
+dove:
+$
+  mu_n = 1/d sum_(i=1)^d a_n^i, quad sigma_n^2 = 1/d sum_(i=1)^d (a_n^i - mu_n)^2
+$
+
+*Differenza chiave*:
+- BatchNorm: normalizza lungo la dimensione del *batch* (dipende dagli altri sample)
+- LayerNorm: normalizza lungo la dimensione delle *feature* (indipendente dal batch)
+
+```python
+# LayerNorm in PyTorch
+ln = nn.LayerNorm(normalized_shape=128)
+
+x = layer(input)
+x = ln(x)           # Normalizzazione per sample
+x = activation(x)
+```
+
+#nota()[
+  *Quando usare cosa?*
+
+  - *BatchNorm*: ideale per CNN e reti fully-connected con batch grandi
+  - *LayerNorm*: preferito nei Transformer e RNN (batch piccoli, sequenze variabili)
+
+  LayerNorm non dipende dalla dimensione del batch, quindi è più stabile con batch piccoli.
+]
+
+=== Confronto tra Tecniche di Normalizzazione
+
+#figure(
+  table(
+    columns: 4,
+    align: (left, center, center, center),
+    table.header([*Tecnica*], [*Normalizza su*], [*Dipendenza batch*], [*Uso tipico*]),
+    [Input Norm], [Feature], [No], [Preprocessing],
+    [BatchNorm], [Batch + Feature], [Sì], [CNN, FC layers],
+    [LayerNorm], [Feature (per sample)], [No], [Transformer, RNN],
+  ),
+  caption: [Confronto tra le principali tecniche di normalizzazione. BatchNorm normalizza lungo il batch, LayerNorm lungo le feature di ogni sample.],
+)
+
+#informalmente()[
+  *Regola pratica*:
+
+  1. *Sempre* normalizzare gli input (standardizzazione)
+  2. Usare *BatchNorm* per CNN con batch grandi ($>= 16$)
+  3. Usare *LayerNorm* per Transformer e quando i batch sono piccoli
+  4. Posizionare la normalizzazione *prima* o *dopo* l'attivazione (dipende dall'architettura)
+]
 
