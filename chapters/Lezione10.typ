@@ -1582,16 +1582,12 @@ for epoch in range(n_epochs):
     for data, target in dataloader:  # data è un batch
         # 1. Forward Pass
         output = model(data)
-
         # 2. Calcolo Loss
         loss = criterion(output, target)
-
         # 3. Azzeramento Gradienti
         optimizer.zero_grad()  # Pulisce i buffer dei gradienti
-
         # 4. Backward Pass (Backpropagation)
         loss.backward()  # Calcola i gradienti automaticamente
-
         # 5. Aggiornamento Parametri
         optimizer.step()  # Aggiorna i pesi usando i gradienti
 ```
