@@ -1,5 +1,7 @@
 #import "../template.typ": *
 
+#todo: ADD MAtrix
+
 = Stream e gestione della memoria
 
 == Trasferimento di memoria
