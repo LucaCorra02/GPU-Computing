@@ -32,8 +32,11 @@
 // YOUR CONTENT STARTS HERE
 // ============================================================================
 //
+#part("Cuda Numba")
 #include "chapters/Lezione1-Introduzione.typ"
 #include "chapters/Lezione2-Gerarchia-Thread.typ"
 #include "chapters/Lezione3-Warp.typ"
 #include "chapters/Lezione4.typ"
 #include "chapters/Lezione6.typ"
+#part("PyTorch")
+#include "chapters/Lezione-7.typ"
