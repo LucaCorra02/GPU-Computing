@@ -17,7 +17,7 @@ Pensare in parallelo, significa avere chiaro quali *feature* la *GPU* espone al 
 - gestire le *sincronizzazioni*. I thread a volte potrebbero dover cooperare nella GPU. Bisogna effettuare una sincronizzazione all'interno dei blocchi logici di thread.
 
 CUDA permette al programmatore di gestire i thread e la memoria dati.
-#attenzione[
+#warning[
   Le operazioni di lancio del kernel sono sempre asincrone. Mentre le operazioni in memoria sono solitamente sincrone. Questo per garantire l'integrità dei dati.
 ]
 
@@ -38,13 +38,13 @@ La struttura a _blocchi_ permette alla GPU di distribuire il lavoro. I blocchi v
 
 Sia le griglie che i blocchi possono avere una *dimensione* ($1D$, $2D$ o $3D$).
 
-#nota()[
+#note()[
   Sebbene la memoria fisica della GPU sia sempre lineare (una lunga sequenza monodimensionale di byte), per i programmatori è difficile ragionare solo in termini lineari se il problema da risolvere è di carattere geometrico. Per questo motivo si usa una organizzazione logica astratta su più dimensioni.
 ]
 
 La scelta del numero di dimensioni avviene in base ai dati che si vuole elaborare.
 
-#nota[
+#note[
   In generale si usa la stessa dimensione sia per le griglie che i blocchi
 ]
 
@@ -61,7 +61,7 @@ Le dimensioni vengono gestite nel seguente modo:
 
 Per ottenere il numero totale di thread basta moltiplicare tutte le dimensioni di grid e block tra di loro.
 
-#attenzione[
+#warning[
   Il numero di thread *massimo* in un blocco è *$1024$*
 ]
 
@@ -71,7 +71,7 @@ Un *blocco* è quindi un gruppo di thread che possono cooperare tra loro (anche 
 - *Block-local synchronization*
 - *Block-local shared memory*
 
-#nota()[
+#note()[
   Tutti i thread in una griglia condividono lo stesso spazio di memoria
 ]
 
@@ -155,7 +155,7 @@ $
   ],
 )
 
-#esempio()[
+#example()[
   Indicizzazione:
   $
     "ID"_("th") = underbrace({0,1,2}, "indice blocco") * 4 + underbrace({0,1,2,3}, "thread id locale")
@@ -180,7 +180,7 @@ Spesso è necessario un controllo quando la dim di griglia non eccede con quella
   if (ix < "blockDim".x AND ix < "blockDim".y) // va bene
 ```
 
-#attenzione()[
+#warning()[
   Il controllo è *obbligatorio*. Siccome il kernel accetta due dimensioni (numero di blocchi per griglia, numero di thread per blocco) può essere che la divisione logica non sia intera (approssimazione per eccesso con `ceil()`). Il controllo evita accessi _out of bound_ sulla struttura originale.
 ]
 
@@ -272,8 +272,8 @@ Spesso è necessario un controllo quando la dim di griglia non eccede con quella
   ],
 )
 
-#esempio(
-  figure(
+#example[
+  #figure(
     {
       import cetz.draw: *
 
@@ -305,16 +305,8 @@ Spesso è necessario un controllo quando la dim di griglia non eccede con quella
             for tx in range(3) {
               let cx = x + tx * cell_size
               let cy = y - ty * cell_size
-              rect(
-                (cx, cy - cell_size),
-                (cx + cell_size, cy),
-                fill: color,
-                stroke: black,
-              )
-              content(
-                (cx + cell_size / 2, cy - cell_size / 2),
-                text(size: 8pt, weight: "bold")[#tx,#ty],
-              )
+              rect((cx, cy - cell_size), (cx + cell_size, cy), fill: color, stroke: black)
+              content((cx + cell_size / 2, cy - cell_size / 2), text(size: 8pt, weight: "bold")[#tx,#ty])
             }
           }
 
@@ -348,9 +340,7 @@ Spesso è necessario un controllo quando la dim di griglia non eccede con quella
             let color = if i < 3 { color_b00 } else { color_b10 }
 
             // Adjust color based on Y coordinate
-            if start_idx >= 18 {
-              color = if i < 3 { color_b01 } else { color_b11 }
-            }
+            if start_idx >= 18 { color = if i < 3 { color_b01 } else { color_b11 } }
 
             rect((cx, y), (cx + cell_w, y + 0.5), fill: color, stroke: black)
             content((cx + cell_w / 2, y + 0.25), text(size: 6pt, weight: "bold")[#(start_idx + i)])
@@ -389,7 +379,7 @@ Spesso è necessario un controllo quando la dim di griglia non eccede con quella
       $"Grid" 2 * 2$, $"Block" 3 * 3$
     ],
   ),
-)
+]
 
 /*
 #figure(
@@ -476,7 +466,7 @@ Prorietà di un kernel. Sono dei qualificatori:
   - Può essere chiamata solo dal device. Impostando la modalità *`inline=True`*, il compilatore inserisce il codice della funzione device all'interno della funzione kernel, risparmiando così i costi relativi alla chiamata.
   - Può avere un valore di ritorno
 
-  #attenzione()[
+  #warning()[
     Le funzioni ``` device``` *non* sono un kernel
   ]
 
@@ -509,11 +499,11 @@ Prorietà di un kernel. Sono dei qualificatori:
     "blockspergrid" * "threadsperblock"
   $
 
-#nota()[
+#note()[
   In generale, una volta fissato il numero di thread per blocco, non è corretto calcolare il numero di blocchi necessari con la divisione intera è meglio utilizzare una divisone e approsimare con ``` ceil```.
 ]
 
-#attenzione()[
+#warning()[
   L'esecuzione del kernel avviene in modo asincrono. Lato host bisogna usare ``` cuda.synchronize()``` per aspettare i risultati dai thread.
 ]
 
@@ -531,7 +521,7 @@ Numba fornisce anche due funzioni per calcolare la *posizione assoluta* di un *t
 
 La GPU e la CPU hanno due memorie separate.
 
-#nota()[
+#note()[
   Il trasferimento di dati può essere in molti casi il bottleneck
 ]
 
@@ -560,7 +550,7 @@ numba.cuda.device_array(
 
 il vantaggio è che la memoria viene allocata solo lato device, inoltre non vengono ricopiati automaticamente sull'host.
 
-#nota()[
+#note()[
   Stesso comportamento di ``` numpy.empty()``` lato host
 ]
 
@@ -602,7 +592,7 @@ $
   v[i][j] = 1 "se" "is_Fib"(i + j) = "True"
 $
 
-#nota()[
+#note()[
   - Il bound degli indici nel kernel è *obbligatorio*. A casua della funzione `ceil` potremmo eseguire più blocchi del necessario.
   - Per quanto riguarda la divisione in blocchi, le GPU moderne eseguono i thread in gruppi indivisibili chiamati *Warp*. Le GPU moderne preferiscono blocchi con più warp per blocco. Solitamente si opera per blocchi da $16 dot 16 = 256$ thread, oppure $32 dot 8 = 256$ thread (sfrutta la coalescenza della memoria).
 ]
