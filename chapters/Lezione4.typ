@@ -6,7 +6,7 @@ La *reduction* è un operazione che va a ridurre con un operazione associativa (
 $
   (x_1, dots, x_n) -> s = sum_(i=1)^(n) x_i
 $
-#nota()[
+#note()[
   La somma può essere sostituita da altre operazioni associative come il prodotto, il massimo, il minimo ecc.
 ]
 
@@ -19,7 +19,7 @@ Un approccio parallelo potrebbe sfruttare le seguenti idee:
 - Il numero di thread attivi vengono dimezzati ad ogni passo.
 - Occorre sincronizzare il lavoro dei thread ad ogni passo.
 
-#attenzione()[
+#warning()[
   L'array di input deve avere una dimensione pari ad una potenza di $2$ (es. $2^k$). In caso contrario, occorre inserire degli elementi di *padding* (zero) fino a raggiungere la dimensione successiva pari ad una potenza di $2$.
 ]
 
@@ -54,7 +54,7 @@ def blockParReduce(array, out): # out ha dim = num_blocchi
 
 // TODO: if idx >= n: return possibile deadlock?
 
-#nota()[
+#note()[
   Serve *sincronizzazione* tra uno step e il successivo. Ogni step richiede che i risultati del passo precedente siano stati elaborati.
 
   Inoltre, è l'host che si occuperà di riunire i risultati parziali di ogni blocco (fuori dal kernel).
@@ -260,7 +260,7 @@ La *$mg("soluzione")$* consiste nel *sequential addressing*, ovvero nel riassegn
   ],
 )
 
-#informalmente()[
+#informally()[
   L'idea è che cambiare come vengono associati i thread agli indici della struttura dati.
 ]
 
@@ -293,7 +293,7 @@ $
   b = [a, (a_0 xor a_1), dots, (a_0 xor a_1 xor dots xor a_(n-1))]
 $
 
-#nota()[
+#note()[
   Un'operatore $xor$ di scan deve avere le seguenti caratteristiche:
   - *commutativo*: $a xor b = b xor a$
   - *associativo*: $(a xor b) xor c = a xor (b xor c)$
@@ -303,7 +303,7 @@ $
 
 === Scan su big data
 
-#informalmente()[
+#informally()[
   In caso di un array di grandi dimensioni può essere necessario *dividere l'array in blocchi più piccoli*, eseguire la scan su ciascun blocco in parallelo, e poi combinare i risultati dei blocchi per ottenere il risultato finale.
 ]
 
@@ -410,7 +410,7 @@ $
 Passaggi:
 1. Ogni blocco calcola una *scan locale* e produce un *valore di somma parziale* (l'ultimo elemento della scan locale). Il risultato è che ogni blocco ha i numeri progressivi corretti al suo interno, ma non tiene conto delle somme dei blocchi precedenti.
 
-  #nota()[
+  #note()[
     é importante che i blocchi in cui viene partizionato l'array stiano in *shared memory* per massimizzare le prestazioni.
   ]
 
@@ -651,7 +651,7 @@ Utilizzando questa versione, il numero di operazioni è stato ridotto a $2(n-1) 
 Le *operazioni atomiche* sono operazioni di lettura/scrittura su una variabile condivisa che vengono eseguite in modo *indivisibile*. Ciò significa che una volta iniziata un'operazione atomica, nessun altro thread può interferire con essa fino a quando non è stata completata.
 
 Questa indivisibilità viene garantita dall'hardware, il quale assicura che le operazioni concorrenti vengano serializzate.
-#nota()[
+#note()[
   L'ordine di esecuzione tuttavia è imprevedibile.
 ]
 
@@ -691,6 +691,6 @@ Numba, mette a disposizioni le operazioni atomiche attraverso il pacchetto ``` n
   ),
   caption: [Operazioni atomiche disponibili in Numba CUDA],
 )
-#esempio()[
+#example()[
   Un esempio di utilizzo può essere l'istogramma di un testo: contare le occorrenze di ogni lettera.
 ]

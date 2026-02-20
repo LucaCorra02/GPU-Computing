@@ -28,7 +28,7 @@ Per inizializzare un tensore da dei dati, possiamo:
   print(x_data)
 ```
 
-#nota()[
+#note()[
   Il tipo viene dedotto automaticamente dall'interprete.
 ]
 
@@ -46,7 +46,7 @@ x_ones = torch.ones_like(x_data) # [[1,1],[1,1]]
 x_rand = torch.rand_like(x_data, dtype=torch.float)
 #[[1.2,0.3],[0.23,2.3]]
 ```
-#attenzione()[
+#warning()[
   Quando si converte un vettore `numpy` ad un `tensor` ci sono due aspetti da considerare:
   - `PyTorch` di default usa i `float32`, mentre `numpy` usa i `float64`. Se ereditassimo direttamente da `numpy` ci potrebbe essere un errore di conversione, bisgona *riconvertire* corretamente i dati.
 
@@ -76,7 +76,7 @@ Esistono inoltre degli operatori caricati, ad esempio:
 - `@`: utilizzato per *operazioni di algebra lineare*, come il prodotto matriciale
 - `*`: utilizzato per *element-wise product*, ad esempio prodotto degli elementi cella per cella di un vettore
 
-#attenzione()[
+#warning()[
   La scrittura `tensor.add_(5)` serve per le operazioni *in place*. Esse modificano il tensore in maniera diretta.
 ]
 
@@ -113,7 +113,7 @@ Nell'esempio sorpa il la seconda dimensione del batch del tenosore $b$ viene pos
   ],
 )
 
-#attenzione()[
+#warning()[
   Non tutte le forme di tensori sono compatibili. Affinché il broadcasting funzioni, `PyTorch` confronta le dimensioni dei due tensori partendo da *destra verso sinistra* (dall'ultima dimensione alla prima). Due dimensioni sono *compatibili* se:
   - Sono uguali
   - Una delle due è $1$.
@@ -121,7 +121,7 @@ Nell'esempio sorpa il la seconda dimensione del batch del tenosore $b$ viene pos
   Se un tensore ha meno dimensioni dell'altro, `PyTorch` aggiunge virtualmente delle dimensioni $1$ a sinistra.
 ]
 
-#esempio()[
+#example()[
   Supponiamo di avere il seguente codice:
   ```py
     A = torch.tensor([[1.], [2.], [3.], [4.]])
@@ -250,7 +250,7 @@ Si tratta di una notazione per effetuare in modo coinciso operazioni compoment-w
 - i tensori su cui si deve operare
 - il tensore risultato
 
-#nota()[
+#note()[
   L'operazione viene eseguita su tutti gli indici che non appaiono tra gli indici del risultato.
 ]
 
@@ -313,11 +313,11 @@ La soluzione prende il nome di $mg("batch norm")$. Essa va a  normalizzare l'inp
   $
     y = gamma hat(x)+ beta
   $
-  #nota()[
+  #note()[
     Se venisse forzata media $0$ e varianza $1$, potremmo limitare la capacità della rete. $gamma$ e $beta$ permettono alla rete di imparare se le serve una distribuzione diversa (o addirittura di annullare la normalizzazione se necessario).
   ]
 
-#informalmente()[
+#informally()[
   I vantaggi introdotti sono due:
   - *Velocità*: Permette di usare Learning Rate molto più alti (convergenza rapida).
 
@@ -341,7 +341,7 @@ $
   sigma^2_c = 1 / ("BHW") sum_(b,h,w) (x_(b,c,h,w) - mu_c)^2
 $
 
-#nota()[
+#note()[
   I canali $C$ rappresentano le features estratte (embedding). La BatchNorm normalizza ogni feature indipendentemente dalle altre, ma coerentemente su tutto il batch $B$ e su tutta l'immagine spaziale.
 ]
 
@@ -499,14 +499,14 @@ Per tensori con più di 2 dimensioni, `transpose(dim0, dim1)` scambia le dimensi
   caption: [Transpose su tensori 4D: scambio di dimensioni specifiche],
 )
 
-#informalmente()[
+#informally()[
   - `transpose(0, 1)`: scambia le *prime due dimensioni* (es. batch e canali). Utile quando si vuole riorganizzare l'ordine dei batch rispetto ai canali.
   - `transpose(0, 2)`: scambia la *prima e terza dimensione* (es. batch e altezza). Permette di riordinare i dati spaziali rispetto al batch.
 
   La trasposizione è fondamentale in operazioni come la convoluzione trasposta o quando si passano dati tra layer con formati diversi (es. NCHW ↔ NHWC).
 ]
 
-#nota()[
+#note()[
   La trasposizione *non copia i dati* in memoria, ma cambia solo l'interpretazione degli indici. Questo può rendere il tensore *non contiguo* in memoria.
 ]
 
@@ -580,7 +580,7 @@ Esempio di utilizzo di `view`:
   caption: [View: riorganizzazione dei dati senza copia],
 )
 
-#attenzione()[
+#warning()[
   `View` effettua il reshape solamente di tensori contigui in memoria.
   ```py
     x = torch.arange(12).view(3,4)
@@ -589,7 +589,7 @@ Esempio di utilizzo di `view`:
   ```
   La matrice viene trasposta (scambio righe colonne) ed è per quello che non trova più la contiguità.
 
-  #informalmente()[
+  #informally()[
     Il concetto di contiguità significa: _I numeri che sono vicini nella matrice (logica) sono vicini anche nella striscia di memoria RAM (fisica)_.
   ]
 
@@ -659,7 +659,7 @@ L'operazione `expand()` *replica i dati* lungo le dimensioni specificate *senza 
   caption: [Expand: replicazione dei dati mediante broadcasting],
 )
 
-#nota()[
+#note()[
   `expand()` *non alloca nuova memoria* ma semplicemente modifica gli stride del tensore per far sì che gli stessi dati vengano "visti" più volte. Questa operazione è molto efficiente rispetto a una vera copia dei dati.
 
   *Differenze chiave*:
@@ -834,7 +834,7 @@ result = torch.stack([x1, x2], dim=1)
   caption: [torch.stack: crea una nuova dimensione impilando i tensori],
 )
 
-#nota()[
+#note()[
   *Differenza tra `cat` e `stack`*:
   - `torch.cat`: unisce tensori lungo una dimensione *esistente*, aumentando la size di quella dimensione
   - `torch.stack`: crea una *nuova dimensione* e posiziona i tensori lungo quella dimensione
@@ -928,7 +928,7 @@ splits = torch.split(x, split_size_or_sections=[1, 2, 1], dim=0)
   caption: [torch.split: divide il tensore in parti di dimensioni specificate],
 )
 
-#informalmente()[
+#informally()[
   *Quando usare chunk vs split*:
   - `chunk`: quando vuoi dividere in un *numero fisso di parti* (es. dividere un batch in 4 parti uguali)
   - `split`: quando vuoi *controllare la dimensione* di ogni parte (es. train/validation split con proporzioni specifiche)

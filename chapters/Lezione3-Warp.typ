@@ -16,7 +16,7 @@ Vale la seguente mappatura:
 
 - un blocco viene assegnato ad un singolo *SM* (non può essere spalmato su più SM)
 
-#nota()[
+#note()[
   Un singolo SM può eseguire più blocchi contemporaneamente (se possiede abbastanza risorse)
 ]
 
@@ -177,13 +177,13 @@ Un *warp* è un gruppo di $32$ thread consecutivi (ID sequenziali) che vengono e
 
 Se i blocchi sono una suddivisione solamente a livello logico, un *warp* è un concetto fisico, ovvero come l'hardware organizza ed esegue fisicamente i thread. Ogni blocco viene linearizzato in più warp seguendo un approccio *row-major*, prima sulla dimensione $x$, poi $y$ e infine $z$.
 
-#informalmente()[
+#informally()[
   L'hardware ignora l'organizzazione a blocchi dei thread. Esso vede la griglia come sequenze di warp. L'ordine 2D "logico" viene linearizzato in $32$ thread sequenziali.
 ]
 
 L'ideale è che i blocchi siano multipli di $32$ in modo da permettere una buona mappatura sull'hardware.
 
-#esempio()[
+#example()[
   Supponendo un blocco di $128$ thread, verranno creati $4$ warp da $32$ thread.
 ]
 
@@ -261,7 +261,7 @@ L'ideale è che i blocchi siano multipli di $32$ in modo da permettere una buona
   ],
 )
 
-#nota()[
+#note()[
   La dimensione di un warp è una costante su varie architetture, in modo tale da garantire l'interoperabilità.
 ]
 
@@ -285,7 +285,7 @@ Entra in funzione quando l'Host (CPU) lancia un Kernel:
 
 - se la GPU è occupata o piccola, assegna pochi blocchi e mette gli altri in coda.
 
-#nota()[
+#note()[
   Una volta che un blocco è assegnato a un SM, ci rimane fino alla fine della sua esecuzione. *Non* può "migrare" su un altro SM.
 ]
 
@@ -424,13 +424,13 @@ I blocchi vengono assegnati in maniera *dinamica* agli SM (che contengono molte 
 
 L'SM ha il compito di gestire uno o più blocchi. Un SM *accetta un nuovo blocco solo se ha abbastanza risorse* hardware (registri e Shared Memory) per ospitare tutti i thread di quel blocco.
 
-#nota()[
+#note()[
   I blocchi in una griglia sono tra di loro *indipendenti*, non si hanno garanzie sull'ordine di esecuzione.
 ]
 
 Appena un blocco viene caricato sull'SM, viene logicamente suddiviso in Warps.
 
-#attenzione()[
+#warning()[
   È importante che un certo blocco *non* dipenda dal risultato di altri blocchi.
   La cooperazione inoltre avviene solamente all'interno del blocco (tranne casi particolari).
 ]
@@ -459,7 +459,7 @@ $
   "Active warp" / "max possible warp per SM"
 $
 
-#nota()[
+#note()[
   Se saturo il numero di risorse per un thread singolo (tante varibili che saturano i registri), lo sheduling generale soffre.
 
   Un'alta occupazione non garantisce per forza delle buone performance.
@@ -474,7 +474,7 @@ Le operazioni di *branch* rendono inefficiente il sistema. Quando una branch vie
 I gruppi di thread così creati, non sono più eseguiti in modo parallelo ma in modo sequenziale.
 
 
-#esempio()[
+#example()[
   #figure(
     grid(
       columns: (0.5fr, 1.0fr),
@@ -596,7 +596,7 @@ I gruppi di thread così creati, non sono più eseguiti in modo parallelo ma in 
 
 La soluzione é *riorganizzare i thread a livello di warp*, in modo che non si verifichino attese.
 
-#attenzione()[
+#warning()[
   *Non* è obbligatorio che ci sia un assocazione 1:1 thread e dati, ovvero il primo dato corrisponde al thread con $"ID" 1$. L'idea è lavorare modulo la dimensione di warp.
 ]
 
@@ -617,11 +617,11 @@ In CUDA la sincronizzazione può essere fatta su più livelli:
 
 - livello di *warp* ```c __syncwarp()```. Sincronizza i thread all'interno di warp.
 
-#nota()[
+#note()[
   Utilizzeremo principalmente la sincronizzazione a livello di blocco.
 ]
 
-#attenzione()[
+#warning()[
   Inserire una direttiva di sincronizzazione ``` __synchtreads()``` all'interno di un branch ``` if-else``` può causare *deadlock* se i thread del blocco vengono divisi in due gruppi.
   ```py
     if threadIdx.x < 512:
@@ -635,7 +635,7 @@ In CUDA la sincronizzazione può essere fatta su più livelli:
 
 Siccome nelle recenti architetture ogni thread possiede un proprio PC (program counter), la *GPU* è in grado di *saltare tra i rami ``` if e else``` dello stesso warp* in modo flessibile. La direttiva ```c __syncwarp()``` è lo strumento per gestire i punti di ritorno.
 
-#esempio()[
+#example()[
 
   Sulle vecchie GPU, senza ```c __syncwarp()``` o scheduling indipendente (unico PC per tutto il warp), l'hardware avrebbe probabilmente eseguito tutto il blocco ``` if``` ($A$ e $B$) prima di toccare il blocco ``` else``` ($X$ e $Y$).
 

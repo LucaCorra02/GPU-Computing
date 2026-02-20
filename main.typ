@@ -1,37 +1,43 @@
-// Example usage of the academic-notes template
-// This demonstrates how to use the template for academic notes
-
 #import "template.typ": *
 
 #show: academic-notes.with(
-  // Required parameters
+  // --- Required
   title: "GPU Computing",
   subtitle: "Unimi - Master's Degree in Computer Science",
   authors: (
     ("Luca Corradini", "LucaCorra02"),
     ("Matteo Zagheno", "zgn"),
   ),
+  lang: "it",
 
-  // Optional parameters (these have defaults if not specified)
+  // --- Optional, uncomment to change
   repo-url: "https://github.com/LucaCorra02/GPU-Computing",
-  license: "CC-BY-4.0",
-  license-url: "https://creativecommons.org/licenses/by/4.0/",
-  last-modified-label: "Last modified", // Customize this (e.g., "Ultima modifica" for Italian)
+  course-url: "https://myariel.unimi.it/course/view.php?id=2942",
+  year: "2025/26",
+  lecturer: "Giuliano Grossi",
+  // date: datetime.today(),
+  // license: "CC-BY-4.0",
+  // license-url: "https://creativecommons.org/licenses/by/4.0/",
+  // heading-numbering: "1.1.",
+  // equation-numbering: none,
+  // page-numbering: "1",
 
-  // Custom introduction (optional - if omitted, a default one is generated)
-  introduction: [
-    #show link: underline
-  ],
-
-  // Styling options (optional - these have sensible defaults)
-  heading-numbering: "1.1.",
-  figure-supplement: "Figure",
+  // --- Optional with language-based defaults, uncomment to change
+  // introduction: auto,
+  // last-modified-label: auto,
+  // outline-title: auto,
+  // part-label: auto,
+  // note-title: auto,
+  // warning-title: auto,
+  // informally-title: auto,
+  // example-title: auto,
+  // proof-title: auto,
+  // theorem-title: auto,
+  // theorem-label: auto,
+  // equation-supplement: auto,
+  // figure-supplement: auto,
 )
 
-// ============================================================================
-// YOUR CONTENT STARTS HERE
-// ============================================================================
-//
 #part("Cuda Numba")
 #include "chapters/Lezione1-Introduzione.typ"
 #include "chapters/Lezione2-Gerarchia-Thread.typ"

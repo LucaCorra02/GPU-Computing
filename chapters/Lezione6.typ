@@ -58,7 +58,7 @@ Uno dei vantaggi è la concurrency overlap. Tramite stream indipendenti abbiamo 
   )
 }
 
-#attenzione()[
+#warning()[
   Il DMA è unico, non posso fare trasferimenti paralleli ma posso far lavorare contemporaneamente CPU e DMA.
   Bisogna anche fare attenzione a limitare le allocazioni di pinned memory, siccome non può essere spostata può influire sul tutto il sistema.
 ]
@@ -80,7 +80,7 @@ Il default stream si comporta così:
 - Se si lancia un kernel nel default stream aspetterà che tutti gli altri stream finiscano.
 - Se si lancia un kernel in un altro stream aspetterò che il default finisca.
 
-#attenzione()[
+#warning()[
   Possiamo avere due comportamenti diversi per lo stream di default:
   - `--default-stream legacy (or noflag)` lo stream si sincronizza con gli altri stream. È il comportamento descritto in precedenza. Da qui in avanti per il default stream si assume questo comportamento.
   - `--default-stream per-thread` lo stream non si sincronizza con gli altri.
@@ -92,7 +92,7 @@ Gli stream possono essere usati per aumentare l'occupancy: Ad esempio se il nost
 
 //TODO Mettere immagine old vs new
 
-#attenzione()[
+#warning()[
   La creazione di uno stream deve avvenire prima del suo utilizzo.
 ]
 

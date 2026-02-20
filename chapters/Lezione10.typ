@@ -17,7 +17,7 @@ $
   nabla f(x) = vec((partial f)/(partial x_1), (partial f)/(partial x_2), dots.v, (partial f)/(partial x_D))
 $
 
-#nota()[
+#note()[
   Il gradiente trasforma una funzione scalare in un *campo vettoriale*: *ad ogni punto $x$* dello spazio viene associato un vettore *$nabla f(x)$*.
 
   Nel contesto del deep learning:
@@ -121,7 +121,7 @@ Nel contesto della visualizzazione 3D:
   caption: [Il gradiente $nabla f$ ($mr("rosso")$) è il vettore che si ottiene combinando le due derivate parziali: la componente $mb("blu")$ $(partial f)/(partial x)$ (orizzontale) e la componente $mg("verde")$ $(partial f)/(partial y)$ (verticale). Nel piano 2D $(x,y)$, il gradiente indica la direzione di massima crescita di $f$.],
 )
 
-#nota()[
+#note()[
   *Interpretazione geometrica del gradiente*:
 
   - *Direzione*: Il gradiente punta nella direzione in cui la funzione cresce più rapidamente
@@ -139,7 +139,7 @@ Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di l
 
 *Perpendicolarità*: In ogni punto, il vettore gradiente $nabla f$ è *perpendicolare* (ortogonale, a 90°) alla curva di livello che passa per quel punto.
 
-#attenzione()[
+#warning()[
   *Importante*: La perpendicolarità è nel *piano $(x, y)$*, non nello spazio 3D!
 
   - Il gradiente è un vettore 2D: $nabla f(x, y) = vec((partial f)/(partial x), (partial f)/(partial y))$
@@ -149,7 +149,7 @@ Un concetto fondamentale è che il gradiente è *perpendicolare* alle curve di l
   Quando visualizziamo la superficie 3D, "proiettiamo" mentalmente il gradiente sul piano di base per vedere la sua perpendicolarità alle curve di livello.
 ]
 
-#esempio()[
+#example()[
   Consideriamo la funzione quadratica in due variabili:
   $
     f(x_1, x_2) = x_1^2 + 3x_1 x_2 + 2x_2^2
@@ -264,7 +264,7 @@ Il gradiente ha diverse interpretazioni geometriche fondamentali:
 
 3. * Magnitudine come tasso di crescita*: Il modulo $||nabla f(x_0)||$ rappresenta il *tasso di crescita massimo* di $f$ in $x_0$.
 
-#esempio()[
+#example()[
   Consideriamo il paraboloide:
   $
     f(x, y) = x^2 + y^2
@@ -342,13 +342,13 @@ $
   cal(L)_c = {x in R^D : f(x) = c}
 $
 
-#nota()[
+#note()[
   *Proprietà fondamentale*: Il gradiente $nabla f(x_0)$ in un punto $x_0$ è *ortogonale* alla curva di livello passante per $x_0$.
 
   Questo significa che il gradiente punta nella direzione che *esce* dalla curva di livello, verso valori crescenti di $f$.
 ]
 
-#attenzione()[
+#warning()[
   Le curve di livello sono fondamentali nell'ottimizzazione:
 
   - Un *passo di gradient descent* ci sposta da una curva di livello a un'altra con valore inferiore
@@ -360,7 +360,7 @@ $
 
 Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottimizzazione.
 
-#teorema("Massima Discesa")[
+#theorem(title: "Massima Discesa")[
   Dato un punto $x_0 in R^D$ e una funzione differenziabile $f: R^D -> R$, tra tutte le direzioni unitarie $d$ (con $||d|| = 1$), la direzione di *massima discesa* (che minimizza $f$ localmente) è data da:
   $
     d^* = -(nabla f(x_0)) / (||nabla f(x_0)||)
@@ -368,7 +368,7 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
   Ovvero, il *negativo del gradiente* indica la direzione in cui la funzione *decresce più rapidamente*.
 ]
 
-#dimostrazione()[
+#proof()[
   L'obbiettivo della dimostrazione è trovare una direzione unitaria $d$ che minimizza la funzione $f$ localmente intorno a $x_0$.
 
   Per la dimostrazione è necessario considerare lo *sviluppo di Taylor* al primo ordine di $f$ intorno a $x_0$:
@@ -382,7 +382,7 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
 
   La nuova _altezza_  della funzione dopo il passo ($f(x_0 + alpha d)$) è data dalla vecchia altezza ($f(x_0)$) più un termine di variazione ($alpha nabla f(x_0)^T d$).
 
-  #nota()[
+  #note()[
     Lo sviluppo di Taylor ci dice che per piccoli spostamenti $alpha d$ da $x_0$, la funzione cambia approssimativamente di:
     $
       Delta f approx alpha nabla f(x_0)^T d
@@ -412,7 +412,7 @@ Si tratta del teorema fondamentale che giustifica l'uso del gradiente nell'ottim
 
 ]
 
-#nota()[
+#note()[
   *Conclusione*: Muoversi nella direzione $-nabla f(x_0)$ garantisce la *massima riduzione* della funzione $f$ in un intorno di $x_0$.
 
   Questo è il principio alla base del *Gradient Descent*!
@@ -436,12 +436,12 @@ dove:
   - Aggiorna i parametri: $x_(k+1) = x_k - alpha_k g_k$
   - Controlla convergenza: se $||g_k|| < epsilon$, termina
 
-#nota()[
+#note()[
   *Criteri di convergenza*:
   - *Condizione ideale*: $nabla f(x_k) = bold(0)$ (punto stazionario)
   - *Condizione pratica*: $||nabla f(x_k)|| < epsilon$ per una soglia piccola $epsilon > 0$
 
-  #attenzione()[
+  #warning()[
     Un gradiente nullo può indicare:
     - Un *minimo locale* (desiderato)
     - Un *massimo locale* (indesiderato)
@@ -451,7 +451,7 @@ dove:
   ]
 ]
 
-#esempio()[
+#example()[
   Minimizziamo $f(x, y) = x^2 + 4y^2$ partendo da $(x_0, y_0) = (3, 2)$.
 
   *Gradiente*:
@@ -477,7 +477,7 @@ dove:
   Convergenza verso il minimo $(0, 0)$ dove $f(0,0) = 0$.
 ]
 
-#attenzione()[
+#warning()[
   *Scelta del Learning Rate $alpha$*:
 
   - $alpha$ troppo *piccolo*: convergenza molto lenta, molte iterazioni
@@ -565,7 +565,7 @@ $
   h'(x) = f'(g(x)) dot g'(x)
 $
 
-#esempio()[
+#example()[
   Consideriamo $h(x) = (x^2 + 1)^3$.
 
   Possiamo vedere questa funzione come composizione:
@@ -594,7 +594,7 @@ dove:
 - $J_g (f(x)) in R^(k times m)$: Jacobiano di $f$ valutato in $g(x)$
 - $J_f (x) in R^(m times n)$: Jacobiano di $g$ valutato in $x$
 
-#nota()[
+#note()[
   *Interpretazione per il Deep Learning*:
 
   In una rete neurale con $L$ layer, l'output finale è una composizione di funzioni:
@@ -607,7 +607,7 @@ dove:
   Questo è il principio alla base della *backpropagation*
 ]
 
-#esempio()[
+#example()[
   Consideriamo una rete neurale minima con due layer (input e output scalari, un solo neurone nascosto, dimensone $1$):
 
   - Layer 1: $z = w_1 x + b_1$ (trasformazione lineare)
@@ -646,7 +646,7 @@ dove:
 
 ]
 
-#attenzione()[
+#warning()[
   La chain rule è il meccanismo fondamentale che permette al *backpropagation* di propagare i gradienti all'indietro attraverso tutti i layer della rete, partendo dalla loss fino ai primi parametri.
 ]
 
@@ -674,7 +674,7 @@ $
   "Riga" i: nabla f_i (x) = vec((partial f_i)/(partial x_1), (partial f_i)/(partial x_2), dots, (partial f_i)/(partial x_n))
 $
 
-#nota()[
+#note()[
   *Confronto con il Gradiente*:
 
   - Il *gradiente* $nabla f$ si applica a funzioni scalari: $f: R^n -> R$ (produce un vettore $in R^n$)
@@ -686,7 +686,7 @@ $
   $
 ]
 
-#esempio()[
+#example()[
 
   Consideriamo $F: R^2 -> R^2$ definita da:
   $
@@ -723,7 +723,7 @@ $
 
 
 
-#esempio()[
+#example()[
   *Jacobiano di un layer fully-connected*:
 
   Un layer lineare in una rete neurale è definito da:
@@ -770,7 +770,7 @@ $
   )
 $
 
-#informalmente()[
+#informally()[
   - $f$ è l'output di un layer con $m$ neuroni (un vettore).
 
   - $g$ è la funzione di Loss finale che prende tutti questi output e calcola un numero unico (l'errore scalare $h$).
@@ -802,7 +802,7 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
 
 
 
-#nota()[
+#note()[
   *Dimensioni nel prodotto*:
   $
     underbrace(R^(k times m), J_g) dot underbrace(R^(m times n), J_f) = underbrace(R^(k times n), J_h)
@@ -811,7 +811,7 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
   Le dimensioni intermedie $m$ si cancellano nel prodotto matriciale, come richiesto dalla composizione di funzioni.
 ]
 
-#esempio()[
+#example()[
   Dato un vettore di input $overline(x) = (x_1, x_2) in R^2$ e due funzioni $f$ e $g$, dove:
   $
     f: R^2 -> R^2 \
@@ -839,20 +839,20 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
   $
 ]
 
-#attenzione()[
+#warning()[
   Durante la backpropagation, il gradiente della loss viene propagato all'indietro attraverso la rete moltiplicando ripetutamente gli Jacobiani dei vari layer. Questo è computazionalmente efficiente grazie alla *struttura matriciale degli Jacobiani*.
 ]
 
 == Esempio completo
 
-#esempio()[
+#example()[
   Supponiamo di avere un modello di *classificazione binaria* (comunemente chiamato *regressione logistica*) dove il dataset è dato da:
   $
     D = {(x_i, y_i)}_(i=1)^N\
     "dove" x_i in R^D, y_i in {0,1}
   $
 
-  #nota()[
+  #note()[
     *Terminologia*: Nonostante il nome "regressione logistica", si tratta di un algoritmo di *classificazione*, non di regressione!
 
     - *Input*: features $x_i in R^D$ (vettori continui)
@@ -988,7 +988,7 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
   - Se $w^T z + b > 0$: classe 1 (giallo)
   - Se $w^T z + b < 0$: classe 0 (rosso)
 
-  #attenzione()[
+  #warning()[
     Un modello *puramente lineare* può commettere errori quando i dati non sono linearmente separabili, come mostrato dai punti cerchiati nel grafico. La funzione *sigmoide* $sigma(z)$ trasforma l'output lineare in una probabilità, permettendo al modello di gestire meglio l'incertezza nelle zone di confine.
   ]
 
@@ -1169,7 +1169,7 @@ Ogni matrice fa fare all'errore un _salto_ all'indietro di un layer.
     caption: [Grafo computazionale dettagliato mostrando le singole operazioni elementari e le rispettive derivate parziali. La chain rule permette di calcolare i gradienti rispetto ai parametri $w$ e $b$ moltiplicando le derivate parziali lungo il percorso.],
   )
 
-  #nota()[
+  #note()[
     *Backpropagation tramite Chain Rule*:
 
     Per calcolare il gradiente della loss rispetto ai parametri, moltiplichiamo le derivate parziali lungo il percorso nel grafo (dalla loss verso i parametri):
@@ -1211,7 +1211,7 @@ $
   w_(t+1) = w_t - eta 1/(|Beta_t|) sum_(n in B_t) gradient_w mr(l)(f(x_n;w_t),y_n)
 $
 
-#nota()[
+#note()[
   L'algoritmo è stocastic in quanto ogni aggiornamento dei pesi usa un sample random, viene introdotto del *rumore* nel calcolo del gradiente
 ]
 
@@ -1381,7 +1381,7 @@ Un *grafo computazionale* è un grafo orientato aciclico (DAG - Directed Acyclic
 
 I gradienti vengono *accumulati* nell'attributo `.grad` dei tensori. La funzione di `backward()` permette di attraversare il grafo per calcolare i gradienti.
 
-#nota()[
+#note()[
   Il grafo cattura la *struttura della funzione* e le *dipendenze* tra le variabili. Questo permette di calcolare automaticamente i gradienti usando la chain rule.
 ]
 
@@ -1396,7 +1396,7 @@ Il grafo viene costruito *dinamicamente* durante l'esecuzione del codice (*dynam
 3. *Registrazione delle dipendenze*: PyTorch registra quale operazione ha generato quale tensore
 4. *Tracciamento automatico*: Il grafo viene costruito man mano che il codice viene eseguito
 
-#esempio()[
+#example()[
   Consideriamo il seguente codice PyTorch:
 
   ```python
@@ -1506,7 +1506,7 @@ Il grafo computazionale supporta due modalità di attraversamento:
 - Si applicano le regole di derivazione usando la chain rule
 - *Risultato*: calcolo dei gradienti rispetto a tutti i parametri
 
-#esempio()[
+#example()[
   Continuando l'esempio precedente, calcoliamo i gradienti con `y.backward()`:
 
   ```python
@@ -1540,7 +1540,7 @@ Il grafo computazionale supporta due modalità di attraversamento:
 
 Un aspetto importante della differenziazione automatica in PyTorch è l'*accumulazione dei gradienti*.
 
-#attenzione()[
+#warning()[
   Per default, PyTorch *accumula* i gradienti nel campo `.grad` di ogni tensore. Questo significa che chiamare `.backward()` multiple volte *somma* i nuovi gradienti a quelli esistenti.
 
   *Conseguenza pratica*: Nel training loop è necessario chiamare `optimizer.zero_grad()` o `tensor.grad.zero_()` prima di ogni backward pass per pulire i gradienti dell'iterazione precedente.
@@ -1558,7 +1558,7 @@ La differenziazione automatica attraverso grafi computazionali offre numerosi va
 
 *4. Automaticità*: Il programmatore non deve derivare manualmente le formule dei gradienti
 
-#nota()[
+#note()[
   *Complessità computazionale*:
 
   - *Forward pass*: $O(n)$ dove $n$ è il numero di operazioni
@@ -1592,7 +1592,7 @@ for epoch in range(n_epochs):
         optimizer.step()  # Aggiorna i pesi usando i gradienti
 ```
 
-#nota()[
+#note()[
   *Perché `optimizer.zero_grad()`?*
 
   PyTorch *accumula* i gradienti per default. Senza azzerarli ad ogni iterazione, i gradienti si sommerebbero a quelli delle iterazioni precedenti, portando a risultati errati.
@@ -1646,7 +1646,7 @@ std = X.std(dim=0)    # Deviazione standard per feature
 X_normalized = (X - mean) / std
 ```
 
-#nota()[
+#note()[
   In fase di *inferenza*, si usano media e varianza calcolate sul *training set*, non sui nuovi dati.
 ]
 
@@ -1684,7 +1684,7 @@ x = bn(x)            # Normalizzazione
 x = activation(x)    # Funzione di attivazione
 ```
 
-#attenzione()[
+#warning()[
   *Comportamento Train vs Eval*:
 
   - *Training*: statistiche ($mu, sigma^2$) calcolate sul batch corrente
@@ -1726,7 +1726,7 @@ x = ln(x)           # Normalizzazione per sample
 x = activation(x)
 ```
 
-#nota()[
+#note()[
   *Quando usare cosa?*
 
   - *BatchNorm*: ideale per CNN e reti fully-connected con batch grandi
@@ -1749,7 +1749,7 @@ x = activation(x)
   caption: [Confronto tra le principali tecniche di normalizzazione. BatchNorm normalizza lungo il batch, LayerNorm lungo le feature di ogni sample.],
 )
 
-#informalmente()[
+#informally()[
   *Regola pratica*:
 
   1. *Sempre* normalizzare gli input (standardizzazione)
@@ -1757,4 +1757,3 @@ x = activation(x)
   3. Usare *LayerNorm* per Transformer e quando i batch sono piccoli
   4. Posizionare la normalizzazione *prima* o *dopo* l'attivazione (dipende dall'architettura)
 ]
-
