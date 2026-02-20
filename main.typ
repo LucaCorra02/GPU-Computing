@@ -41,3 +41,4 @@
 #part("PyTorch")
 #include "chapters/Lezione-7.typ"
 #include "chapters/Lezione10.typ"
+#include "chapters/Lezione11.typ"
