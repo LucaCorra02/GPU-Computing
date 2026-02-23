@@ -401,33 +401,74 @@ In PyTorch esistono diversi meccanismi di sincronizzazione con diversi livelli d
 ]
 
 
-=== Esempio: Sovrapposizione di trasferimento e computazione
+== Esempio: CUDA Prefetcher
 
-Esempio in cui nella fase di training uso degli stream in modo tale che se il batch N sta venendo computato, trasferisco il batch N+1 in GPU:
+#esempio()[
+  In questo esempio viene costruito un `CUDAPrefetcher`. Questa tecnica permette di calcolare il batch $N$ sulla GPU nel mentre viene trasferito il batch $N+1$ sulla GPU.
 
-```py
-stream_compute = torch.cuda.Stream()
-stream_transfer = torch.cuda.Stream()
+  #nota()[
+    L'esempio assume che il `DataLoader` originale sia configurate per lavorare sulla `pin_memory=True`.
+  ]
 
-for i, (inputs, targets) in enumerate(dataloader):
-  # Trasferisco il batch corrente su GPU in modo asincrono
-  with torch.cuda.stream(stream_transfer):
-    inputs_gpu = inputs.to('cuda', non_blocking=True)
-    targets_gpu = targets.to('cuda', non_blocking=True)
+  Classe `CudaPrefetcher`:
+  ```python
+      import torch
+      class CUDAPrefetcher:
+        def __init__(self, loader, device):
+          self.loader = iter(loader) # DataLoader
+          self.device = device
+          # Stream dedicato alla copia
+          self.stream = torch.cuda.Stream(device=device)
+          self.next_batch = None
+          self._preload() # Caricamento del primo batch
 
-  # Attendo che il trasferimento sia completato
-  stream_compute.wait_stream(stream_transfer)
+        def _to_device(self, batch):
+          if isinstance(batch, (tuple, list)):
+              return [t.to(self.device, non_blocking=True) for t in batch]
+          return batch.to(self.device, non_blocking=True)
 
-  # Eseguo il forward pass
-  with torch.cuda.stream(stream_compute):
-    output = model(inputs_gpu)
-    loss = criterion(output, targets_gpu)
-    loss.backward()
-```
+        """Preleva il prossimo batch dalla CPU e lo accoda per la copia sulla GPU."""
+          def _preload(self):
+              try:
+                  batch = next(self.loader)
+              except StopIteration:
+                  self.next_batch = None
+                  return
+              # Copia affidata allo stram
+              with torch.cuda.stream(self.stream):
+                  self.next_batch = self._to_device(batch)
 
-Ho un punto unico di uso dei dati (model). Devo sganciare solamente l'esecuzione del trasferimento su un altro stream, ne bastano due.
+          def __iter__(self):
+              return self
 
-In questo caso non possiamo elaborare un chunk di dati su uno stream in maniera indipendente. Qui non va bene in quanto il model deve consumare tutti i dati che passano.
+            """Restituisce il batch corrente e avvia il prefetch del successivo."""
+          def __next__(self):
+              if self.next_batch is None:
+                  raise StopIteration
+              # SINCRONIZZAZIONE: Lo stream di default (calcolo) deve aspettare che lo stream di copia abbia finito
+              torch.cuda.current_stream(self.device).wait_stream(self.stream)
+              batch = self.next_batch
+              # Avviamo il trasferimento del prossimo batch in background
+              self._preload()
+              return batch
+  ```
+  Il meotodo `__next__` viene utilizzato nel training loop. Quando il ciclo di training chiede il batch successivo, usiamo `wait_stream`. Lo stream di calcolo corrente si ferma solo se il batch *non* ha ancora finito di viaggiare sul cavo PCIe, garantendo che i dati siano pronti all'uso. Subito dopo, avvia il preloading del batch successivo e passa i dati correnti al training loop.
 
-Intanto che il model elabora un chunk, parallelamente carichiamo in memoria GPU (asincrono) il successivo.
+  Esempio di training Loop:
+  ```python
+    my_dataloader = DataLoader(dataset, batch_size=32, shuffle=True, pin_memory=True)
+    device = torch.device('cuda:0')
+    #Wrap del dataloader
+    prefetcher = CUDAPrefetcher(my_dataloader, device)
 
+    for inputs, targets in prefetcher:
+      # A questo punto, 'inputs' e 'targets' sono GIA' sulla GPU.
+      # Non è necessario .to_device()
+      outputs = model(inputs)
+      loss = criterion(outputs, targets)
+      optimizer.zero_grad()
+      loss.backward()
+      optimizer.step()
+      ...
+  ```
+]
