@@ -2,53 +2,124 @@
 
 = PyTorch on GPU
 
-``` python
+A differenza degli array `numpy` che possono vivere solamente nella memoria host, i `tensori` possono esssere allocati anche su device.
+
+Di *default* il device su cui vengono allocati i tensori è la memoria host. Per cambiare il device possiamo:
+```py
+  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  print(device)
+  torch.set_default_device('cuda') # Lo setta globalmente
+```
+#nota()[
+  La stringa `cuda` si riferisce al device di defualt, tipicamente `cuda:0`. Se ci sono più device sulla macchina possiamo selezionarli come `cuda:1,cuda:2, ecc..`
+]
+
+è possibile anche cambiare device solo in un determinato contesto tramite `torch.cuda.device(device_id)`. Tale metodo infatti fornisce uno scope temporaneo in cui viene utilizzato il device indicato:
+```py
+with torch.cuda.device(0):
+  tensor_gpu1 = torch.randn(1000,1000) # On gpu
+  result = some_computation(tensor_gpu1)
+
+#Device reverts to previous setting
+```
+
+== Trasferimento CPU -> GPU
+
+Il trasferimenti avviene attraverso il metodo `.to()`. Esso può cambiare:
+- Device
+- Dype
+- Layout
+- Memory Format
+
+Il trasferimento dati avviene in maniera *esplicita* da CPU a GPU (e viceversa), il device GPU viene specificato tramite una stringa:
+
+```py
+tensor_cpu = torch.randn(1000, 1000)
+print(tensor_cpu.device)
+
+# Pattern 1: Explicit device object
 tensor_gpu = tensor_cpu.to(torch.device('cuda:0'))
-tensor_gpu = tensor_cpu.cuda(0) #versione corta
+print(tensor_gpu.device)
+
+# Pattern 2: String specification
+tensor_gpu = tensor_cpu.to('cuda:0')
+print(tensor_gpu.device)
+
+# Pattern 3: Legacy .cuda() method (still supported)
+tensor_gpu = tensor_cpu.cuda(0)
+print(tensor_gpu.device)
+
+```
+Possiamo andare anche ad effettuare delle operazioni aggiuntive durante il trasferimento, concatenandole tra di loro:
+
+```py
+  x = x.to(device='cuda',dtype=torch.float16)
 ```
 
-Si tratta di un trasferimento di dati esplicito da CPU a GPU, il device GPU viene specificato tramite una stringa. Il problema è che possono fare delle operazioni miste, in particolare se vogliamo risparmiare operazioni possiamo concatenarle:
+Le *factory functions* (`empty`, `zeros`, `ones`, `rand`, ecc.) supportano il parametro `device` per creare tensori direttamente su GPU:
 ```py
-x = x.to(device='cuda',dtype=np.float32)
+  x = torch.zeros(100, 100, dtype=torch.float32 ,device='cuda:0')
+  y = torch.rand(100, 100, device='cuda:0')
 ```
-Tramite la variabile `torch.set_default_device('cuda')`, posso cambiare il device di default (CPU). Le operazioni `rand` e `zeros` ora eseguono una cuda malloc.
+#nota()[
+  Le device function sono molto utili in quanto permettono di rimuovere trasferimenti CPU->GPU non necessari. Allocazione in un'unica operazione.
+]
 
-Le factory functions (`empty`, `zeros`, `ones`, `rand`, ecc.) supportano il parametro `device` per creare tensori direttamente su GPU:
+== Operazioni
+
+Alcune operazioni PyTorch possono essere *in-place* (`add_`,`mul_`,`relu_`,ecc). Esse modificano direttamente il tensore in memoria senza crearne uno nuovo:
 ```py
-x = torch.zeros(100, 100, device='cuda:0')
-y = torch.rand(100, 100, device='cuda:0')
+  x = torch.randn(100, 100, device='cuda:0')
+  y = torch.randn(100, device='cuda:0') # Broadcastable shape, same device
+
+  x.add_(y) # Valid: same device, broadcastable
+
+  z = torch.randn(100, device='cpu')
+  # x.add_(z) # RuntimeError: expected device cuda:0 but got cpu
 ```
+In questo caso il *broadcasting* (se possibile) viene automaticamente gestito da pytorch.
 
-Ci sono alcune operazioni che lavorano in place, ad esempio:
-```py
-x = torch.rand(100,100,device='cuda:0')
-y = torch.rand(100,device='cuda:0')
+La gestione del garbage collector avviene in maniera automatica, gestita a runtime (*non* dal programmatore).
 
-x.add_(y) # avviene un broadcasting implicito gestito da cuda
-z = torch.rand(100,device='cpu')
-# x.add_(z) # ERRORE: z e x sono su due device diversi
-```
-La gestione del garbage avviene automaticamente ed è gestita a runtime (non dal programmatore).
+== Modello su GPU
 
-I dati del modello possono essere spostati sulla gpu
+Possiamo trasferire un modello deep da CPU a GPU nel seguente modo. Internamente.
+- Tutti i parametri (pesi e bias), vengono trasferiti sulla memoria della GPU
+- Tutti i buffer (`BatchNorm`) vengono trasferiti
+- La memoria allocata sul device per il modello rimane fino alla prossima passata del garbage collector
+
 ```py
-model = nn.Sequential(
-  nn.Linear(784,256),
-  nn.ReLU()
-)
-model = model.to(device) # sposta il modello su GPU
-```
-Allo stesso modo i dati nel training vengono elaborati a batch, i batch anche essi devono essere caricati sulla GPU. I singoli batch vengono trasferiti su device sia input che target
-```py
-for inputs, targets in dataLoader:
-  inputs = inputs.to(device)
-  targets = targets.to(device)
-  output = model(inputs) # risultati su GPU
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  model = nn.Sequential(
+    nn.Linear(784, 256),
+    nn.ReLU(),
+    nn.Linear(256, 10)
+  )
+  model = model.to(device)
 ```
 
 #nota()[
-  Tutto il codice è molto portabile, può essere scalato per più GPU, più thread delle CPU in modo trasparente.
+  PyTorch *non* permette operazioni tra host e device. Se il modello è allocato sulla GPU mentre l'input è sulla CPU verrà generato un `RunTimeError`.
+
+  La *best practice* è utilizzare una variabile device definita globalmente.
+  ```py
+    model.to(device)
+    tensor.to(device)
+  ```
 ]
+Per questo motivo è sempre necessario trasferire i dati sullo stesso device del modello. I dati nel training vengono elaborati a batch, anche essi devono essere caricati sulla GPU:
+
+```py
+  for inputs, targets in dataLoader:
+    inputs = inputs.to(device)
+    outputs = outputs.to(device)
+
+    outputs = model(inputs)
+    loss = criterion(outputs, targets)
+    #Risultati sulla GPU
+```
+
+== Memoria della GPU
 
 Solitamente la memoria riservata è poco di più di quella allocata. PyTorch gestisce automaticamente la memoria GPU tramite un allocatore interno.
 
