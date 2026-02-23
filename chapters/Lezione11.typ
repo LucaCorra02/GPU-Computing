@@ -121,58 +121,229 @@ Per questo motivo è sempre necessario trasferire i dati sullo stesso device del
 
 == Memoria della GPU
 
-Solitamente la memoria riservata è poco di più di quella allocata. PyTorch gestisce automaticamente la memoria GPU tramite un allocatore interno.
+Possiamo vedere lo stato della memoria tramite due direttive:
+- `torch.cuda.memory_allocated()`: Mostra la memoria allocata, utilizzata dai tensori
+- `torch.cuda.memory:reserved()`; Mostra la memoria riservata
 
-= Stream
+Inoltre, tramite la funzione `torch.cuda.empty_cache()` è possibile rilasciare la cache che la GPU non sta utilizzando, per renderla di nuovo disponibile. Questa operazione *non* ha effetto sulla memoria che sta venendo utilizzata dai tensori.
 
-Solitamente ci sono una serie di _corsie_ su cui smaltire il traffico ovvero gli stream. Si possono sovrapporre delle richieste di trasferimento e calcolo vero e proprio.
+== Stream
 
-Esiste anche qui il default stream (di default le cose lanciate su GPU vanno qua), inoltre il default stream è mutualmente esclusivo, blocca tutti gli altri stream (non bello).
+Le moderne architetture dispongono di code hardware indipendenti su cui possiamo spalmare il traffico da smaltire. In pytorch uno *stream* definisce a quale di queste code di esecuzione hardware verrà inviata la successiva operazione CUDA.
 
-Usiamo la classe `torch.cuda.Stream` per la costruzione e configurazione di stream.
+PyTorch assegna di *default* le operazioni a uno _stream di default_. Tutte le operazioni lanciate su GPU di default si incanalano qui. Il $mr("problema")$ principale è che questo strem è *mutualmente esclusivo* viene sincronizzato implicitamente con tutti gli altri, creando cosi delle barriere di sincronizzazione che *riducono la concorrenza*.
+
+In particolare, se non si creano nuovi stream si rischoa di serealizzare delle operazioni che potrebbero avvenire in parallelo come:
+- Trasferimenti Host->Device
+- Il lancio di kernel
+- Trasferimenti Device->Host
+
+I casi d'uso principale includono:
+- *Overlap Copia - Calcolo*: Separando le operazioni in stream diversi, il motore DMA (responsabile dei trasferimenti via PCIe o NVLink) e il motore di calcolo (che esegue i kernel sui multiprocessori) possono operare simultaneamente e in modo indipendente.
+
+- *Triple-Buffering*: Un pattern molto efficiente consiste nel dedicare tre stream separati: uno per i trasferimenti di dati verso la GPU (H2D), uno per i kernel di calcolo, e un terzo per riportare i risultati sulla CPU (D2H). Questa separazione abilita pipeline in cui l'upload, il calcolo e il download avvengono contemporaneamente.
+
+- *Stram Based Prefetch*: Durante l'*addestramento*, uno stream dedicato alla copia può avviare il trasferimento del batch $N+1$ (dalla CPU alla GPU), proprio mentre lo stream di calcolo sta ancora elaborando il batch $N$. Questa tecnica incrementa notevolmente il throughput complessivo.
+
+=== Creazione degli Stream
+
+In pytorch viene utilizzata la classe `torch.cuda.Stream` per la costruzione e configurazione di stream. La creazione di stream è limitata dai limiti hardware della GPU, solitamente $32-64$ kernel concorrenti.
+
 ```python
-stream = torch.cuda.Stream(
-  device='cuda:0',
-  priority=0  # priorità a livello di stream nello scheduling (range: -1 a 0)
-)
+  stream = torch.cuda.Stream(
+    device='cuda:0', # Target device
+    priority=0, # Priority level (lower = higher priority)
+  )
 ```
+
 #esempio()[
+  Nell'esempio è il calcolo di $a$ e di $b$ avvengono in modo parallelo:
   ```py
   x = torch.randn(1000,1000, device='cuda')
   y = torch.matmul(x,x)
 
-  stream1 = torch.cuda.Stream()
-  stream2 = torch.cuda.Stream()
+  stream1 = torch.cuda.Stream('cuda')
+  stream2 = torch.cuda.Stream('cuda')
+
   with torch.cuda.stream(stream1): # passo l'esecuzione a stream1
     # operazioni eseguite su stream1
-    a = torch.randn(1000, 1000, device='cuda')
+    a = torch.matmul(x,x)
+
   with torch.cuda.stream(stream2):
     # operazioni eseguite su stream2
-    b = torch.randn(1000, 1000, device='cuda')
+    b = torch.matmul(x,x)
   ```
-  Le esecuzioni di stream1 e stream2 sono davvero concorrenti
+  Le esecuzioni di stream1 e stream2 sono concorrenti.
 ]
-Possiamo avere anche degli stream annidati (creazione di stream dentro il contesto di un altro stream). Lo stream interno vive solamente nel contesto del `with` interno, successivamente il contesto passa a quello esterno.
 
-Esiste un metodo `wait_stream()` che permette di sincronizzarci con gli altri stream, oltre agli eventi.
+Possiamo avere anche degli *stream annidati* (creazione di stream dentro il contesto di un altro stream). Lo stream interno vive solamente nel contesto del `with` interno, successivamente il contesto passa a quello esterno:
+```py
+outer_stream = torch.cuda.Stream('cuda')
+with torch.cuda.stream(outer_stream):
+  # Opereazioni eseguite sullo stream outer
+  x = torch.randn(1000, 1000)
+  inner_stream = torch.cuda.Stream('cuda')
+  with torch.cuda.stream(inner_stream):
+    # Operazioni eseguite sul inner_stream
+    y = torch.matmul(x, x)
+
+  # Controllo passato all'outer_stream
+  z = x + y # Nota: y può non essere pronta, serve sincronizzazione !
+```
+#nota()[
+  Nell'esempio sopra $y$ potrebbe non essere pronta, richiede sincronizzazione.
+]
+
+La *sincronizzazione* avviene tramite il metodo `wait_stream()` che permette di sincronizzarci con gli altri stream, oltre agli eventi. In particolare per creare una dipendenza tra due stream:
+```py
+  torch.cuda.current_stream().wait_stream(copy_stream)
+```
 
 == Trasferimento dati efficiente
 
-Esistono due meccanismi:
-- `pin_memory`: trasferire i dati in pinned memory
-- `non_blocking`: trasferimento in modo asincrono, l'host non attende su quel trasferimento
+Il trasferimento efficiente tra CPU e GPU è essenziale. Potrebbe diventare un bottleneck se non fatto in maniera adeguata. PyTorch fornisce due meccanismi:
+- *Pinned Memory* `tensor.pin_memory()`
+- *Trasferimenti asincroni* `tensor.to(device, non_blocking=True)`. L'host non attende in questo tipo di trasferimento
+
+#attenzione()[
+  Usare la pinned_memory non sempre più efficiente, deve essere utilizzata con cautela.
+]
 
 === Pin memory
 
-`tensor.to(device, non_blocking=True)`. La pin memory può essere applicata ad un tensore per trasferirlo nella memoria pinned.
+In python esistono due tipi di memorie:
+- *Pinned Memory*: La GPU può accedere direttamente alla memoria del host. Si tratta di un'area della RAM della CPU che viene bloccata, in modo che il sistema operatico non possa spostarla su disco.
 
-La pinned memory è una memoria RAM che non può essere spostata dalla memoria virtuale (page-locked). Questo permette trasferimenti DMA (Direct Memory Access) più veloci tra CPU e GPU, poiché il driver non deve prima copiare i dati in un buffer intermedio.
+- *Pageable Memory*: CUDA deve prima creare una copia del dato nella memoria pinned, successivamente procedere con il trasferimento.
 
-Il codice che viene eseguito si blocca e aspetta. `pin_memory` è quindi *blocking* per l'host.
-Possono essere creati anche dei tensori direttamente in pin memory già inizializzati:
-```py
-x = torch.randn(100, 100, pin_memory=True)
-```
+*`.to(device)`* = Effettua il classico trasferimento da CPU a GPU. Il tensore inzialmente risiede in RAM nella parte *paginata*. Tuttavia questo trasferimento presenta il problema dello $mr("stagin")$: La GPU non può leggere direttamente dalla memoria paginabile. CUDA, sottobanco, crea una copia temporanea del tensore nell'area pinned. Solo dopo il tensore può essere trasferito sulla GPU. Si tratta di un'*operazione bloccante* (La CPU attende che il trasferimento sia completo)
+
+
+*`.pin_memory()`* presenta due caratteristiche principali:
+- *Accesso diretto*: Un tensore che risiede in questa zona di RAM può essere copiato dal motore DMA, senza bisogno dello stagin
+- *Bloccante*: Si tratta di un'operazione bloccante per la CPU.
+
+#nota()[
+  Solitamente l'uso della pinned memory viene utilizzato con il parametro*`non_blocking=True`*. PyTorch cede il trasferimento dei dati su uno stream CUDA e restituire immediatamente il controllo alla CPU.
+
+  Richiede che i dati di partenza che si vuole trasferire siano già nella `pinned_memory`.
+]
+
+#align(center)[
+  #import "@preview/cetz:0.3.2": canvas, draw
+  #canvas(length: 1cm, {
+    import draw: *
+
+    // Virtual Memory box
+    rect((0, 0), (6, 7), stroke: 2pt, name: "vm")
+    content((3, 6.5), text(11pt, weight: "bold")[Virtual memory])
+
+    // Disk area
+    rect((0.5, 4.5), (5.5, 6), fill: rgb("#f4e5a0"), stroke: 1pt, name: "disk")
+    content((3, 5.5), [Disk])
+
+    // RAM area
+    rect((0.5, 0.5), (5.5, 4.2), fill: rgb("#f4e5a0"), stroke: 1pt, name: "ram")
+    content((3, 3.8), [RAM (pageable)])
+
+    // Pinned memory area inside RAM
+    rect((2.5, 1), (5, 3.2), fill: rgb("#b8e6b8"), stroke: 1.5pt, name: "pinned")
+    content((3.75, 2.9), text(9pt)[pinned memory])
+
+    // GPU box
+    rect((8, 2), (11, 5), stroke: 2pt, name: "gpu")
+    content((10.3, 4.5), text(11pt, weight: "bold")[GPU])
+
+    // ========== PERCORSO BLU (senza pinned memory - percorso lento) ==========
+    // Tensori blu su disco
+    circle((1.2, 5.5), radius: 0.15, fill: rgb("#7eb3e6"), stroke: 1pt)
+    circle((1.5, 5.5), radius: 0.15, fill: rgb("#7eb3e6"), stroke: 1pt)
+
+    // Tensori blu in RAM pageable
+    circle((1.2, 3), radius: 0.15, fill: rgb("#7eb3e6"), stroke: 1pt)
+    circle((1.5, 3), radius: 0.15, fill: rgb("#7eb3e6"), stroke: 1pt)
+
+    // Tensori blu in pinned memory (copia intermedia CUDA)
+    circle((3.2, 2), radius: 0.15, fill: rgb("#7eb3e6"), stroke: 1pt)
+    circle((3.5, 2), radius: 0.15, fill: rgb("#7eb3e6"), stroke: 1pt)
+
+    // Tensori blu in GPU
+    rect((9, 4.2), (9.6, 4.6), fill: rgb("#7eb3e6"), stroke: 1pt)
+
+    // Freccia blu: Disco → RAM
+    line((1.35, 4.5), (1.35, 3.3), stroke: (paint: rgb("#7eb3e6"), thickness: 1.5pt), mark: (end: "stealth"))
+    content((0.4, 3.9), text(7pt, fill: rgb("#7eb3e6"), weight: "bold")[])
+
+    // Freccia blu: RAM → Pinned (copia intermedia)
+    line((1.8, 3), (3, 2.2), stroke: (paint: rgb("#7eb3e6"), thickness: 1.5pt), mark: (end: "stealth"))
+    content((2.3, 2.4), text(7pt, fill: rgb("#7eb3e6"), weight: "bold")[])
+
+
+    // ========== PERCORSO ARANCIONE (con pinned memory) ==========
+    // Tensori arancioni su disco
+    circle((4.2, 5.5), radius: 0.15, fill: rgb("#e87030"), stroke: 1pt)
+    circle((4.5, 5.5), radius: 0.15, fill: rgb("#e87030"), stroke: 1pt)
+
+    // Tensori arancioni in RAM pageable
+    circle((4.2, 3.5), radius: 0.15, fill: rgb("#e87030"), stroke: 1pt)
+    circle((4.5, 3.5), radius: 0.15, fill: rgb("#e87030"), stroke: 1pt)
+
+    // Tensori arancioni in pinned memory
+    circle((4.2, 2.2), radius: 0.15, fill: rgb("#e87030"), stroke: 1pt)
+    circle((4.5, 2.2), radius: 0.15, fill: rgb("#e87030"), stroke: 1pt)
+
+    // Tensori arancioni in GPU
+    rect((9, 3.3), (9.6, 3.7), fill: rgb("#e87030"), stroke: 1pt)
+
+    // Freccia arancione: Disco → RAM
+    line((4.35, 4.5), (4.35, 3.8), stroke: (paint: rgb("#e87030"), thickness: 1.5pt), mark: (end: "stealth"))
+    content((5.2, 4.2), text(7pt, fill: rgb("#e87030"), weight: "bold")[])
+
+    // Freccia arancione: RAM → Pinned Memory
+    line((4.35, 3.2), (4.35, 2.5), stroke: (paint: rgb("#e87030"), thickness: 1.5pt), mark: (end: "stealth"))
+    content((5.2, 2.9), text(7pt, fill: rgb("#e87030"), weight: "bold")[])
+
+    // Freccia arancione: Pinned → GPU (DMA)
+    line((5, 2.2), (8, 3.5), stroke: (paint: rgb("#e87030"), thickness: 2pt), mark: (end: "stealth"))
+    content((6.5, 2.5), text(7pt, fill: rgb("#e87030"), weight: "bold")[DMA])
+
+    // Legend
+    let legend_y = -1.5
+
+    // Pageable memory
+    rect((0, legend_y), (0.8, legend_y + 0.5), fill: rgb("#f4e5a0"), stroke: 1pt)
+    content((2.2, legend_y + 0.25), anchor: "west", text(9pt)[Pageable memory])
+
+    // Non-pageable memory
+    rect((0, legend_y - 0.8), (0.8, legend_y - 0.3), fill: rgb("#b8e6b8"), stroke: 1pt)
+    content((2.2, legend_y - 0.55), anchor: "west", text(9pt)[Non-pageable (page-locked)])
+
+    // Percorsi
+    content((0, legend_y - 1.4), anchor: "west", text(10pt, weight: "bold")[Percorsi di trasferimento:])
+
+    line(
+      (0.2, legend_y - 1.9),
+      (0.8, legend_y - 1.9),
+      stroke: (paint: rgb("#7eb3e6"), thickness: 1.5pt),
+      mark: (end: "stealth"),
+    )
+
+    content((2.2, legend_y - 1.9), anchor: "west", text(9pt)[`pinned_memory()`])
+
+    line(
+      (0.2, legend_y - 2.5),
+      (0.8, legend_y - 2.5),
+      stroke: (paint: rgb("#e87030"), thickness: 2pt),
+      mark: (end: "stealth"),
+    )
+    content((2.2, legend_y - 2.5), anchor: "west", text(9pt)[`.to_device()`])
+
+    // Transfer annotations
+    content((1.6, 5), text(8pt, fill: rgb("#7eb3e6"), weight: "bold")[`pinned_memory()`])
+    content((4.2, 5), text(8pt, fill: rgb("#e87030"), weight: "bold")[`.to_device()`])
+  })
+]
+
 
 == Eventi
 
