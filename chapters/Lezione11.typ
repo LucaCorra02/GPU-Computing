@@ -347,33 +347,59 @@ In python esistono due tipi di memorie:
 
 == Eventi
 
-All'interno di un kernel può essere messo un marker, ovvero `torch.cuda.Event()` e posso sincronizzare gli stream su un certo evento. Posso creare un'interdipendenza tra eventi.
-
-`torch.cuda.synchronize()` sincronizza su tutto, host e stream, solitamente non si usa.
-
-Solitamente si usa `stream.synchronize()` o `event.synchronize()`.
-
-```py
-x_cpu = torch.rand(100, 100, pin_memory=True)
-x_gpu = x_cpu.to('cuda', non_blocking=True) # trasferimento asincrono
-```
+All'interno di un kernel può essere messi dei *marker*, ovvero dei `torch.cuda.Event()`. Essi possono essere usati come delle barriere di *sincronizzazione* molto leggere, per gestire l'overlap delle operazioni sulla GPU. Gli eventi creano una vera dipendenza tra *operazioni su stream diversi*, *senza però bloccare l'host* (la CPU).
 
 #esempio()[
-  Sincronizzazione tra stream usando eventi:
+  Quando il lavoro viene diviso su più stream (ad esempio, uno stream per copiare i dati e un altro per fare i calcoli), è necessario coordinarli. Lo stream di calcolo non può iniziare a elaborare i dati finché lo stream di copia non ha effettivamente finito di trasferirli.
+]
+
+Il meccanismo si basa su due azioni principali:
+- *`record()`*: Viene registrato l'evento che si deve aspettare `event.record` (ad esempio la copia dei dati)
+- *`wait_event()`*: Lo stream aspetta fino a quando il marker non viene raggiunto `compute_stream.wait(event)` (ad esempio, per iniziare la computazione il trasferimento dati deve essere finito)
+
+#esempio()[
+  L'esempio mostra la creazione di due stream:
+  - il primo per il trasferimento dei dati
+  - il secondo per la loro computazione
+
+  La computazione non può iniziare se il trasferimento non è completato.
   ```py
-  stream1 = torch.cuda.Stream()
-  stream2 = torch.cuda.Stream()
-  event = torch.cuda.Event()
+    event = torch.cuda.Event()
+    with torch.cuda.stream(copy_stream):
+      x_gpu = x_cpu.to("cuda", non_blocking=True)
 
-  with torch.cuda.stream(stream1):
-    x = torch.randn(1000, 1000, device='cuda')
-    event.record() # registra l'evento su stream1
-
-  with torch.cuda.stream(stream2):
-    stream2.wait_event(event) # attende che stream1 raggiunga l'evento
-    y = x + 1 # usa il risultato di stream1
+    event.record()
+    with torch.cuda.stream(compute_stream):
+      compute_stream.wait_event(event) # Attesa
+      y = model(x_gpu) #Computazion
   ```
 ]
+
+=== Livelli di sincronizzazione
+
+In PyTorch esistono diversi meccanismi di sincronizzazione con diversi livelli di granularità e impatto sulle prestazioni:
+
+#align(center)[
+  #table(
+    columns: (auto, auto, 1fr),
+    align: (center, center, left),
+    stroke: 0.5pt,
+    inset: 8pt,
+    table.header([*API*], [*Ambito (Scope)*], [*Descrizione*]),
+    [`torch.cuda.synchronize()`],
+    [Globale],
+    [Ferma la CPU finché tutte le operazioni su tutti gli stream non sono terminate. È molto sicuro ma uccide il parallelismo.],
+
+    [`stream.synchronize()`], [Stream], [Ferma la CPU finché un singolo stream specifico non ha finito il suo lavoro.],
+
+    [`event.synchronize()`], [Evento], [Ferma la CPU finché non viene raggiunto quello specifico evento (segnalibro).],
+
+    [`stream.wait_event()`],
+    [Cross-stream],
+    [*Non blocca la CPU*. Dice semplicemente a uno stream della GPU di aspettare che venga raggiunto un evento registrato su un altro stream.],
+  )
+]
+
 
 === Esempio: Sovrapposizione di trasferimento e computazione
 
