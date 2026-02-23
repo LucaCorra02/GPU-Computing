@@ -57,7 +57,7 @@ Dove la funzione di attivazione viene è applicata *componente per componente*.
 
 
 #figure(
-  image("../assets/linear-classifier.png", width: 70%)
+  image("../assets/linear-classifier.png", width: 70%),
 )
 
 Nell'immagine di sinistra, tutti gli input $x$ convergono in un singolo neurone con funzione di attivazione $sigma$, producendo un singolo output. A destra, gli input si connettono a multipli neuroni output (uno per classe), ciascuno con la propria funzione di attivazione $sigma$, permettendo la classificazione in $K$ classi diverse..
@@ -856,7 +856,7 @@ $
 
 Dove:
 - $
-  mb(y)_(i,k) = cases(1 "se" k = y_i, 0 "altrimenti")
+    mb(y)_(i,k) = cases(1 "se" k = y_i, 0 "altrimenti")
   $
 - La *somma interna seleziona automaticamente solo la classe corretta*
 
@@ -956,15 +956,15 @@ All'inizio del training, la *matrice dei pesi* (che dovrà essere appresa) viene
 
 = Neural Networks: Regression vs Classification
 
-Le reti neurali possono essere utilizzate per diversi tipi di predizioni: 
+Le reti neurali possono essere utilizzate per diversi tipi di predizioni:
 - *Regressione*: predizione di valori continui (es. prezzo di una casa)
 - *Classificazione*: predizione di classi discrete (es. tipo di fiore)
 
 #nota()[
   Anche se la struttura di base della rete, può sembrare simile, cambiano l'output layer e la funzione di loss:
-   - Nella *regressione*, l'output layer è tipicamente un layer lineare senza attivazione. 
-  - Nella *classificazione* l'output layer produce logits che vengono poi trasformati in probabilità tramite _softmax_. 
-  
+  - Nella *regressione*, l'output layer è tipicamente un layer lineare senza attivazione.
+  - Nella *classificazione* l'output layer produce logits che vengono poi trasformati in probabilità tramite _softmax_.
+
   La funzione di loss è *MSE* per la regressione e *Cross-Entropy* per la classificazione.
 ]
 
@@ -985,7 +985,7 @@ Inoltre l'output $hat(y)$ del modello *non* ha bound, in quanto si tratta di un 
 Dato un vettore di input $x in R^D$, il problema di classificazione consiste nel predire una classe *$y in {1,2,...,K}$*, dove $K$ è il numero di classi.
 
 #nota()[
-  Valgono le seguenti assunzioni: 
+  Valgono le seguenti assunzioni:
   - Le classi sono *disgiunte* e mutualmente esclusive (un esempio appartiene ad una sola classe)
 
   - Lo spazio dell'input viene partizionato in *regioni di decisione* (decision boundaries) che separano le classi.
@@ -1096,9 +1096,9 @@ Tale bound decisionale, corrisponde ad un iperpiano nello spazio degli input.
   #nota()[
     In spazi di dimensione superiore ($D > 2$), il decision boundary diventa un *iperpiano* di dimensione $D-1$. Il vettore dei pesi $w$ è sempre *perpendicolare* al boundary e definisce la direzione di massima variazione.
   ]
-] 
+]
 
-*Proprietà* di queste funzioni: 
+*Proprietà* di queste funzioni:
 - Mapping diretto da input a classe
 - Non modellano esplicitamente la probabilità
 - Non forniscono una misura di confidenza nelle predizioni
@@ -1113,13 +1113,13 @@ $
 I parametri del modello vengono appresi massimizzando la probabilità dei dati osservati (*massimizzazione della verosimiglianza*) o minimizzando la Cross-Entropy Loss.
 
 Per quanto riguarda il layer di output, è necessario che produca dei *logits* (valori reali arbitrari) che vengono poi trasformati in probabilità tramite la funzione *Softmax*:
-- *Caso binario*: viene utilizzata una funzione *Sigmoid* per mappare i logits in probabilità 
+- *Caso binario*: viene utilizzata una funzione *Sigmoid* per mappare i logits in probabilità
 $
   p(C_1 | x ) = sigma(w^T x)
 $
 - *Caso multiclasse*: viene utilizzata la funzione *Softmax* per ottenere una distribuzione di probabilità su tutte le classi:
 $
-  P(C_k | x) = "softmax"(W x)_k 
+  P(C_k | x) = "softmax"(W x)_k
 $
 
 #nota()[
@@ -1130,7 +1130,7 @@ $
 
 === Dataloader
 
-I Database _reali_, possono presentare una serie di problematiche, tra cui: 
+I Database _reali_, possono presentare una serie di problematiche, tra cui:
 - Dati mancanti
 - Dati non bilanciati
 - Troppo grandi
@@ -1169,7 +1169,7 @@ Argomenti principali:
   Una *iterazione completa sui dati* prende il nome di *epoca* (epoch). Ad ogni epoca, i dati vengono shufflati (se `shuffle=True`) per garantire che il modello non veda sempre gli stessi esempi nello stesso ordine, migliorando così la generalizzazione.
 ]
 
-=== torch.nn vs torch.nn.functional 
+=== torch.nn vs torch.nn.functional
 
 In PyTorch, esistono due moduli principali per definire le operazioni nei modelli: `torch.nn` e `torch.nn.functional`.
 
@@ -1186,7 +1186,7 @@ Modulo utilizzato principalmente per definire la *struttura* del *modello*, crea
 
 *`torch.nn.functional`*: Si tratta di un modulo *stateless* orientato alle *funzioni* che fornisce funzioni per operazioni di basso livello, come convoluzioni, attivazioni, funzioni di perdita, ecc. Queste funzioni *non gestiscono i parametri* e devono essere chiamate esplicitamente all'interno del metodo `forward` del modello. Esempio:
 ```python
-import torch.nn.functional as F 
+import torch.nn.functional as F
 def forward(self, x):
   x = F.relu(self.fc(x))
 ```
@@ -1203,8 +1203,8 @@ Quando usare `torch.nn.functional`:
 - Controllo di finefine nel forward pass
 
 #nota()[
-  Solitamente vine utilizzato un mix di entrambi: `torch.nn` per definire i layer e `torch.nn.functional` per applicare le funzioni di attivazione e altre operazioni sui dati. 
-  
+  Solitamente vine utilizzato un mix di entrambi: `torch.nn` per definire i layer e `torch.nn.functional` per applicare le funzioni di attivazione e altre operazioni sui dati.
+
   *Pattern comune*:
   ```python
   class Net(nn.Module):
@@ -1221,13 +1221,13 @@ Quando usare `torch.nn.functional`:
 === Struttura tipica di un modello di classificazione
 
 Solitamente vien utilizzata la seguente pipeline per definire un modello di classificazione in PyTorch:
-  1. Load & preprocess data
-  2. Wrap data in Dataset / DataLoader
-  3. Define nn.Module
-  4. Select loss + optimizer
-  5. Train loop (forward → loss → backward → step)
-  6. Evaluate with model.eval()
-  7. Save / deploy model
+1. Load & preprocess data
+2. Wrap data in Dataset / DataLoader
+3. Define nn.Module
+4. Select loss + optimizer
+5. Train loop (forward → loss → backward → step)
+6. Evaluate with model.eval()
+7. Save / deploy model
 
 La seguente tabella riassume le differenze principali tra classificazione binaria e multiclasse in termini di architettura della rete:
 
@@ -1293,7 +1293,7 @@ import matplotlib.pyplot as plt
 def plot_decision_boundary(model, X, y):
     """
     Visualizza il decision boundary di un modello di classificazione
-    
+
     Args:
         model: modello PyTorch addestrato
         X: input features (numpy array o tensor)
@@ -1304,26 +1304,26 @@ def plot_decision_boundary(model, X, y):
         X = X.cpu().numpy()
     if torch.is_tensor(y):
         y = y.cpu().numpy()
-    
+
     # Crea una griglia di punti
     x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
     y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
     xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),
                          np.linspace(y_min, y_max, 100))
-    
+
     # Predizioni sulla griglia
     model.eval()
     with torch.no_grad():
         grid_points = torch.FloatTensor(np.c_[xx.ravel(), yy.ravel()])
         predictions = model(grid_points)
-        
+
         # Per classificazione binaria
         if predictions.shape[1] == 1:
             Z = torch.sigmoid(predictions).numpy().reshape(xx.shape)
         # Per classificazione multiclasse
         else:
             Z = torch.argmax(predictions, dim=1).numpy().reshape(xx.shape)
-    
+
     # Plot
     plt.contourf(xx, yy, Z, alpha=0.3, cmap='RdYlBu')
     plt.scatter(X[:, 0], X[:, 1], c=y, cmap='RdYlBu', edgecolors='k')
@@ -1340,30 +1340,30 @@ Quando un modello presenta underfitting o performance non soddisfacenti, possiam
 *1. Aumentare la profondità (più layer)*
 
 Aggiungere più livelli nascosti alla rete aumenta la sua capacità di apprendere rappresentazioni gerarchiche. Risultato:
-  - *$mg("Vantaggi")$*: Maggiore capacità espressiva, rappresentazioni più astratte
+- *$mg("Vantaggi")$*: Maggiore capacità espressiva, rappresentazioni più astratte
 
-  - *$mr("Svantaggi")$*: Più parametri da apprendere, rischio di overfitting, training più lento
+- *$mr("Svantaggi")$*: Più parametri da apprendere, rischio di overfitting, training più lento
 
 *2. Aumentare la larghezza (più neuroni per layer)*
 
 Incrementare il numero di unità nascoste in ogni layer. Risultato:
-  - *$mg("Vantaggi")$*: Più capacità all'interno dello stesso livello, spesso più veloce da trainare rispetto ad aggiungere profondità
+- *$mg("Vantaggi")$*: Più capacità all'interno dello stesso livello, spesso più veloce da trainare rispetto ad aggiungere profondità
 
-  - *$mr("Svantaggi")$*: Aumenta significativamente il numero di parametri (crescita quadratica)
+- *$mr("Svantaggi")$*: Aumenta significativamente il numero di parametri (crescita quadratica)
 
 *3. Trainare più a lungo (più epoche)*
 
 Se la loss continua a diminuire, il modello sta ancora imparando. Risultato:
-  - *$mg("Vantaggi")$*: Permette al modello di convergere verso un minimo migliore
+- *$mg("Vantaggi")$*: Permette al modello di convergere verso un minimo migliore
 
-  - *$mr("Svantaggi")$*: Rischio di overfitting se si traina troppo a lungo, aumento del tempo di addestramento
+- *$mr("Svantaggi")$*: Rischio di overfitting se si traina troppo a lungo, aumento del tempo di addestramento
 
 *4. Cambiare funzioni di attivazione*
 
 Le funzioni di attivazione introducono *non-linearità*, essenziali per apprendere pattern complessi. Risultato:
-  - *$mg("Vantaggi")$*: Permette di apprendere decision boundaries non lineari, migliora la capacità espressiva
+- *$mg("Vantaggi")$*: Permette di apprendere decision boundaries non lineari, migliora la capacità espressiva
 
-  - *$mr("Svantaggi")$*: Alcune funzioni (es. sigmoid) possono causare vanishing gradient, altre (es. ReLU) possono causare neuroni morti
+- *$mr("Svantaggi")$*: Alcune funzioni (es. sigmoid) possono causare vanishing gradient, altre (es. ReLU) possono causare neuroni morti
 
 
 *Funzioni comuni*:
@@ -1375,7 +1375,7 @@ Le funzioni di attivazione introducono *non-linearità*, essenziali per apprende
 
 #attenzione()[
   *Senza funzioni di attivazione*, anche una rete profonda è equivalente a un singolo layer lineare! Le attivazioni sono *fondamentali* per la capacità espressiva della rete.
-  
+
   Matematicamente: $f(x) = W_2(W_1 x) = (W_2 W_1)x = W_"combined" x$ (composizione di trasformazioni lineari = trasformazione lineare)
 ]
 
@@ -1384,9 +1384,9 @@ Le funzioni di attivazione introducono *non-linearità*, essenziali per apprende
 Un approccio sistematico per migliorare un modello:
 
 1. *Baseline*: Inizia con un modello semplice (1-2 layer, pochi neuroni)
-2. *Diagnosi*: 
-   - Underfitting? → Aumenta capacità (più layer/neuroni, più epoche)
-   - Overfitting? → Regolarizzazione (dropout, weight decay, early stopping)
+2. *Diagnosi*:
+  - Underfitting? → Aumenta capacità (più layer/neuroni, più epoche)
+  - Overfitting? → Regolarizzazione (dropout, weight decay, early stopping)
 3. *Iterazione*: Modifica un iperparametro alla volta e osserva gli effetti
 4. *Validazione*: Valuta sempre su un validation set separato
 
@@ -1394,7 +1394,7 @@ Un approccio sistematico per migliorare un modello:
   *Trade-off fondamentale*:
   - Modelli più grandi/profondi → maggiore capacità → rischio overfitting
   - Modelli più piccoli/superficiali → minore capacità → rischio underfitting
-  
+
   L'obiettivo è trovare il giusto bilanciamento per il problema specifico.
 ]
 
@@ -1402,173 +1402,288 @@ Un approccio sistematico per migliorare un modello:
 === Esempio: Regressione non lineare con MLP
 
 #esempio()[
-  Dato un dataset di punti 2D: 
+  Dato un dataset di punti 2D:
   $
     {(x_i, y_i)}_(i=1)^N
   $
-  Dove: 
+  Dove:
   - $x_i in R$ (*coordinata x* del punto)
   - $y_i in R$ (valori reali da predire, corrispondenti alla *coordinata y* del punto)
 
-I valori di input seguono una distribuzione uniforme $x_i tilde U([-2,2])$ e sono distributi seguendo una funzione non lineare:
-$
-  y = f(x) = x^3 - 2.5 x^2 + 25 sin(2x) + epsilon
-$
-Dove $epsilon$ è un rumore gaussiano con media zero e deviazione standard 3: $epsilon tilde N(0, sigma^2)$
+  I valori di input seguono una distribuzione uniforme $x_i tilde U([-2,2])$ e sono distributi seguendo una funzione non lineare:
+  $
+    y = f(x) = x^3 - 2.5 x^2 + 25 sin(2x) + epsilon
+  $
+  Dove $epsilon$ è un rumore gaussiano con media zero e deviazione standard 3: $epsilon tilde N(0, sigma^2)$
 
-L'obiettivo è addestrare un MLP (Multi-Layer Perceptron) per apprendere la funzione $f(x)$ e predire i valori di $y$ dati i punti $x$. Il modello avrà le seguini caratteristiche:
-- *Input layer*: 1 neurone (per la coordinata $x$)
-- *Hidden layer*: 1 o più layer con un certo numero di neuroni (es. 10)
-- *Output layer*: 1 neurone (per predire la coordinata $y$)
+  L'obiettivo è addestrare un MLP (Multi-Layer Perceptron) per apprendere la funzione $f(x)$ e predire i valori di $y$ dati i punti $x$. Il modello avrà le seguini caratteristiche:
+  - *Input layer*: 1 neurone (per la coordinata $x$)
+  - *Hidden layer*: 1 o più layer con un certo numero di neuroni (es. 10)
+  - *Output layer*: 1 neurone (per predire la coordinata $y$)
 
-La funzione di loss utilizzata sarà la *Mean Squared Error* (MSE) e l'ottimizzatore sarà *Adam* con un learning rate di $1e-4$. Il modello verrà addestrato per 10.000 epoche, monitorando la loss durante il processo di training.
+  La funzione di loss utilizzata sarà la *Mean Squared Error* (MSE) e l'ottimizzatore sarà *Adam* con un learning rate di $1e-4$. Il modello verrà addestrato per 10.000 epoche, monitorando la loss durante il processo di training.
 
-\ *Dataset*:
+  \ *Dataset*:
 
-Creazioni dei dati raw:
-```python
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+  Creazioni dei dati raw:
+  ```python
+  import torch
+  import torch.nn as nn
+  import torch.nn.functional as F
 
-# Define the function
-def fun(x):
-  return x**3 - 2.5 * x**2 + 25 * np.sin(2 * x)
+  # Define the function
+  def fun(x):
+    return x**3 - 2.5 * x**2 + 25 * np.sin(2 * x)
 
-# generate data with noise
-n = 200 # number of observations
+  # generate data with noise
+  n = 200 # number of observations
 
-# get noise around y observations
-yNormal = torch.distributions.Normal(loc=0.0, scale=10)
-yNoise = yNormal.sample([n])
-# get observations
-xObs = 10*torch.rand([n])-5 # uniform from [-5,5]
-yObs = xObs**3 - xObs**2 + 25 * torch.sin(2*xObs) + yNoise
+  # get noise around y observations
+  yNormal = torch.distributions.Normal(loc=0.0, scale=10)
+  yNoise = yNormal.sample([n])
+  # get observations
+  xObs = 10*torch.rand([n])-5 # uniform from [-5,5]
+  yObs = xObs**3 - xObs**2 + 25 * torch.sin(2*xObs) + yNoise
 
-# Scatter plot of xObs vs yObs using Plotly
-plot_fun(x_scatter=xObs.numpy(), y_scatter=yObs.numpy())
-```
+  # Scatter plot of xObs vs yObs using Plotly
+  plot_fun(x_scatter=xObs.numpy(), y_scatter=yObs.numpy())
+  ```
 
-#nota()[
-  Il rumore $epsilon$ rappresenta le *imprecisioni* nelle misurazioni del mondo reale. Il modello non deve imparare il rumore, ma la *funzione sottostante* $f(x)$ che genera i dati.
-]
+  #nota()[
+    Il rumore $epsilon$ rappresenta le *imprecisioni* nelle misurazioni del mondo reale. Il modello non deve imparare il rumore, ma la *funzione sottostante* $f(x)$ che genera i dati.
+  ]
 
-\ *Creazione della classe Dataset*:
+  \ *Creazione della classe Dataset*:
 
-In PyTorch, per gestire i dati in modo efficiente, creiamo una classe che eredita da `torch.utils.data.Dataset` e implementa tre metodi fondamentali:
+  In PyTorch, per gestire i dati in modo efficiente, creiamo una classe che eredita da `torch.utils.data.Dataset` e implementa tre metodi fondamentali:
 
-```python
-from torch.utils.data import Dataset, DataLoader
+  ```python
+  from torch.utils.data import Dataset, DataLoader
 
-class nonLinearRegressionData(Dataset):
-    def __init__(self, x, y):
-        """Inizializza il dataset con i dati x e y"""
-        self.x = x
-        self.y = y
-        
-    def __len__(self):
-        """Restituisce il numero di esempi nel dataset"""
-        return len(self.x)
-        
-    def __getitem__(self, idx):
-        """Restituisce l'esempio all'indice idx"""
-        return self.x[idx], self.y[idx]
+  class nonLinearRegressionData(Dataset):
+      def __init__(self, x, y):
+          """Inizializza il dataset con i dati x e y"""
+          self.x = x
+          self.y = y
 
-# Istanzia il Dataset con i dati osservati
-d = nonLinearRegressionData(xObs, yObs)
+      def __len__(self):
+          """Restituisce il numero di esempi nel dataset"""
+          return len(self.x)
 
-# Crea il DataLoader per iterare sui dati in mini-batch
-train_dataloader = DataLoader(d, batch_size=25, shuffle=True)
-```
+      def __getitem__(self, idx):
+          """Restituisce l'esempio all'indice idx"""
+          return self.x[idx], self.y[idx]
 
-#nota()[
-  Il parametro `shuffle=True` è *fondamentale*: ad ogni epoca i dati vengono mescolati, evitando che il modello veda sempre gli esempi nello stesso ordine. Questo migliora la generalizzazione e previene l'overfitting.
-  
-  Con `batch_size=25`, il dataset da 200 esempi viene suddiviso in 8 batch (200/25=8). Ad ogni iterazione, il modello processa 25 esempi contemporaneamente.
-]
-\ *Modello*: 
-```python
-nInput  = 1
-nHidden = 10
-nOutput = 1
+  # Istanzia il Dataset con i dati osservati
+  d = nonLinearRegressionData(xObs, yObs)
 
-# net model: MLP
-class MLP(nn.Module):
-    def __init__(self, nInput, nHidden, nOutput):
-        super(MLP, self).__init__()
-        self.nInput  = nInput
-        self.nHidden = nHidden
-        self.nOutput = nOutput
-        self.linear1 = nn.Linear(self.nInput, self.nHidden)
-        self.linear2 = nn.Linear(self.nHidden, self.nHidden)
-        self.linear3 = nn.Linear(self.nHidden, self.nHidden)
-        self.linear4 = nn.Linear(self.nHidden, self.nOutput)
-        self.ReLU    = nn.ReLU()
+  # Crea il DataLoader per iterare sui dati in mini-batch
+  train_dataloader = DataLoader(d, batch_size=25, shuffle=True)
+  ```
 
-    def forward(self, x):
-        h1 = self.ReLU(self.linear1(x))
-        h2 = self.ReLU(self.linear2(h1))
-        h3 = self.ReLU(self.linear3(h2))
-        output = self.linear4(h3)
-        return(output)
+  #nota()[
+    Il parametro `shuffle=True` è *fondamentale*: ad ogni epoca i dati vengono mescolati, evitando che il modello veda sempre gli esempi nello stesso ordine. Questo migliora la generalizzazione e previene l'overfitting.
+
+    Con `batch_size=25`, il dataset da 200 esempi viene suddiviso in 8 batch (200/25=8). Ad ogni iterazione, il modello processa 25 esempi contemporaneamente.
+  ]
+  \ *Modello*:
+  ```python
+  nInput  = 1
+  nHidden = 10
+  nOutput = 1
+
+  # net model: MLP
+  class MLP(nn.Module):
+      def __init__(self, nInput, nHidden, nOutput):
+          super(MLP, self).__init__()
+          self.nInput  = nInput
+          self.nHidden = nHidden
+          self.nOutput = nOutput
+          self.linear1 = nn.Linear(self.nInput, self.nHidden)
+          self.linear2 = nn.Linear(self.nHidden, self.nHidden)
+          self.linear3 = nn.Linear(self.nHidden, self.nHidden)
+          self.linear4 = nn.Linear(self.nHidden, self.nOutput)
+          self.ReLU    = nn.ReLU()
+
+      def forward(self, x):
+          h1 = self.ReLU(self.linear1(x))
+          h2 = self.ReLU(self.linear2(h1))
+          h3 = self.ReLU(self.linear3(h2))
+          output = self.linear4(h3)
+          return(output)
 
 
-model = MLP(nInput, nHidden, nOutput)
-```
+  model = MLP(nInput, nHidden, nOutput)
+  ```
 
-\ Training loop:
-```python
-loss_fn = nn.MSELoss()
-n_epochs = 10000
+  \ Training loop:
+  ```python
+  loss_fn = nn.MSELoss()
+  n_epochs = 10000
 
-def train_MLP(model, n_epochs, train_dataloader, loss_fn):
-    # Define the loss function and optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    nTrainSteps = n_epochs
+  def train_MLP(model, n_epochs, train_dataloader, loss_fn):
+      # Define the loss function and optimizer
+      optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+      nTrainSteps = n_epochs
 
-    # Run the training loop
-    for epoch in range(0, nTrainSteps):
-        # Set current loss value
-        current_loss = 0.0
-        # Iterate over the DataLoader for training data
-        for i, data in enumerate(train_dataloader, 0):
-            # Get inputs
-            inputs, targets = data
-            # Zero the gradients
-            optimizer.zero_grad()
-            # Perform forward pass (make sure to supply the input in the right way)
-            outputs = model(torch.reshape(inputs, (len(inputs), 1)))
-            # Compute loss
-            loss = loss_fn(outputs, targets)
-            # Perform backward pass
-            loss.backward()
-            # Perform optimization
-            optimizer.step()
-            # Print statistics
-            current_loss += loss.item()
-        if (epoch + 1) % 1000 == 0:
-            print('Loss after epoch %5d: %.3f' %
-                    (epoch + 1, current_loss))
-            current_loss = 0.0
-    # Process is complete.
-    print('Training process has finished.')
+      # Run the training loop
+      for epoch in range(0, nTrainSteps):
+          # Set current loss value
+          current_loss = 0.0
+          # Iterate over the DataLoader for training data
+          for i, data in enumerate(train_dataloader, 0):
+              # Get inputs
+              inputs, targets = data
+              # Zero the gradients
+              optimizer.zero_grad()
+              # Perform forward pass (make sure to supply the input in the right way)
+              outputs = model(torch.reshape(inputs, (len(inputs), 1)))
+              # Compute loss
+              loss = loss_fn(outputs, targets)
+              # Perform backward pass
+              loss.backward()
+              # Perform optimization
+              optimizer.step()
+              # Print statistics
+              current_loss += loss.item()
+          if (epoch + 1) % 1000 == 0:
+              print('Loss after epoch %5d: %.3f' %
+                      (epoch + 1, current_loss))
+              current_loss = 0.0
+      # Process is complete.
+      print('Training process has finished.')
 
-train_MLP(model, n_epochs, train_dataloader, loss_fn)
-y_pred = model(x.unsqueeze(1)).squeeze()
-x1 = x.detach().numpy()
-y1 = y_pred.detach().numpy()
-```
+  train_MLP(model, n_epochs, train_dataloader, loss_fn)
+  y_pred = model(x.unsqueeze(1)).squeeze()
+  x1 = x.detach().numpy()
+  y1 = y_pred.detach().numpy()
+  ```
 
   #nota()[
     *Reshape* è necessario perché il modello si aspetta un input di forma `(batch_size, nInput)`, mentre `inputs` è un vettore 1D di forma `(batch_size,)`. Reshape a `(batch_size, 1)` consente al modello di processare correttamente i dati.
-    
+
     Nel caso di regressione, *non* è necessario applicare una *funzione di attivazione finale*, poiché stiamo predicendo valori continui nell'intervallo $(-infinity, +infinity)$.
   ]
 
 ]
- 
- 
 
+=== Esempio classificatore multiclasse
+
+#esempio()[
+  Il DataSet è composto da circa $2000$ elementi divisi secondo la regola $80 %$ training e $20 %$ split. Ogni entry è un dato 2D $(x,y)$. Esistono $4$ classi in cui vogliamo partizionare i dati.
+
+  Si tratta dunque di una classificazione multiclasse (esempio completo è la lezione $10$: #link("https://colab.research.google.com/drive/1H_67B-cdnNXElwzpk9BCSY4lmvKE8eta?authuser=1")
+
+  Il modello avra la seguente struttura:
+  - Layer di `input(2)` -> `hidden 1(64)`
+  - Layer `hidden 1(64)` -> `hidden 2(32)`
+  - Layer `hidden 2(32)` -> `output(4)`
+
+  La funzione di attivazione utilizzata è la `ReLU`, mentre la funzione di loss utilizzata è la `CorssEntropy`.
+
+  ```python
+    class NeuralNetwork(nn.Module):
+      def __init__(self, input_dim, hidden_dim1, hidden_dim2, output_dim):
+          super(NeuralNetwork, self).__init__()
+          # Layer 1: Input -> Hidden1
+          self.fc1 = nn.Linear(input_dim, hidden_dim1)
+          # Layer 2: Hidden1 -> Hidden2
+          self.fc2 = nn.Linear(hidden_dim1, hidden_dim2)
+          # Layer 3: Hidden2 -> Output
+          self.fc3 = nn.Linear(hidden_dim2, output_dim)
+
+      def forward(self, x):
+          # Layer 1: Linear + ReLU + Dropout
+          x = self.fc1(x)
+          x = F.relu(x)
+          # Layer 2: Linear + ReLU + Dropout
+          x = self.fc2(x)
+          x = F.relu(x)
+          # Output layer (raw logits, no activation)
+          # CrossEntropyLoss will apply softmax internally
+          x = self.fc3(x)
+          return x
+
+      input_dim = 2
+      hidden_dim1 = 64
+      hidden_dim2 = 32
+      output_dim = num_classes
+      model = NeuralNetwork(input_dim, hidden_dim1, hidden_dim2, output_dim)
+  ```
+
+  Training Loop:
+
+  ```py
+  def train_model(model, X_train, y_train, criterion, optimizer, num_epochs=50, batch_size=32):
+    train_losses = []
+    train_accuracies = []
+
+    num_batches = len(X_train) // batch_size
+
+    print("\n" + "=" * 60)
+    print("STARTING TRAINING")
+    print("=" * 60)
+
+    for epoch in range(num_epochs):
+      # Set model to training mode
+      model.train()
+
+      epoch_loss = 0.0
+      correct = 0
+      total = 0
+      # Mini-batch training
+      for i in range(num_batches):
+          # Get batch
+          start_idx = i * batch_size
+          end_idx = start_idx + batch_size
+          inputs = X_train[start_idx:end_idx]
+          labels = y_train[start_idx:end_idx]
+
+          optimizer.zero_grad()
+          outputs = model(inputs)
+          loss = criterion(outputs, labels)
+          loss.backward() #Compute grad
+          optimizer.step() #Update parameters
+          epoch_loss += loss.item()
+
+          _, predicted = torch.max(outputs.data, 1)
+          total += labels.size(0)
+          correct += (predicted == labels).sum().item()
+
+          # Calculate epoch metrics
+          avg_loss = epoch_loss / num_batches
+          train_accuracy = 100 * correct / total
+          train_losses.append(avg_loss)
+          train_accuracies.append(train_accuracy)
+
+          # Print progress every 10 epochs
+          if (epoch + 1) % 10 == 0:
+              print(f"Epoch [{epoch+1:3d}/{num_epochs}] | "
+                    f"Loss: {avg_loss:.4f} | "
+                    f"Accuracy: {train_accuracy:.2f}% | "
+                    f"LR: {optimizer.param_groups[0]['lr']:.6f}")
+
+        print("=" * 60)
+        print("TRAINING COMPLETE")
+        print("=" * 60)
+
+        return train_losses, train_accuracies
+
+        optimizer = optim.SGD(model.parameters(), lr=0.001)
+        criterion = nn.CrossEntropyLoss()
+
+
+        # Train the model
+        train_losses, train_accuracies = train_model(
+            model, X_train, y_train, criterion, optimizer, num_epochs=50, batch_size=32
+        )
+  ```
+  #nota()[
+    A differenza dell'esempio di prima non è necessario andare ad eseguire una `reshape`, in quanto gli input avranno già una dimensione adeguata `(1000,2)`.
+  ]
+
+
+]
 
 
 
