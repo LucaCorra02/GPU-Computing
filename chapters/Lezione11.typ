@@ -11,16 +11,22 @@ Si tratta di un trasferimento di dati esplicito da CPU a GPU, il device GPU vien
 ```py
 x = x.to(device='cuda',dtype=np.float32)
 ```
-Tramite la variabile `torch.set_default_device('cuda')`, posso cambiare il device di default (CPU). Le opraziomi `rand` e `zeros` ora eseguono una cuda malloc.
+Tramite la variabile `torch.set_default_device('cuda')`, posso cambiare il device di default (CPU). Le operazioni `rand` e `zeros` ora eseguono una cuda malloc.
 
-Scrivere le factory function, empty, zeros, ecc
-Ci sono alcune operazioni che lavorano in place, ad esempio ```py
+Le factory functions (`empty`, `zeros`, `ones`, `rand`, ecc.) supportano il parametro `device` per creare tensori direttamente su GPU:
+```py
+x = torch.zeros(100, 100, device='cuda:0')
+y = torch.rand(100, 100, device='cuda:0')
+```
+
+Ci sono alcune operazioni che lavorano in place, ad esempio:
+```py
 x = torch.rand(100,100,device='cuda:0')
 y = torch.rand(100,device='cuda:0')
 
-x.add_(y)#avviene un broadcasting implicito gestito da cuda
+x.add_(y) # avviene un broadcasting implicito gestito da cuda
 z = torch.rand(100,device='cpu')
-#x.add_(z) z e x sono su due device diversi
+# x.add_(z) # ERRORE: z e x sono su due device diversi
 ```
 La gestione del garbage avviene automaticamente ed è gestita a runtime (non dal programmatore).
 
@@ -28,38 +34,35 @@ I dati del modello possono essere spostati sulla gpu
 ```py
 model = nn.Sequential(
   nn.Linear(784,256),
-  nn.ReLu
+  nn.ReLU()
 )
-model = model.to()
+model = model.to(device) # sposta il modello su GPU
 ```
 Allo stesso modo i dati nel training vengono elaborati a batch, i batch anche essi devono essere caricati sulla GPU. I singoli batch vengono trasferiti su device sia input che target
 ```py
-for input,target in dataLoader:
+for inputs, targets in dataLoader:
   inputs = inputs.to(device)
   targets = targets.to(device)
-  output = model(inputs) #risultati su GPU, vanno ritrasferiti
+  output = model(inputs) # risultati su GPU
 ```
 
 #nota()[
-  Tutto il codice è molto portatile, può essere scalato per più cpu, più thread delle cpu in modo trasparente
+  Tutto il codice è molto portabile, può essere scalato per più GPU, più thread delle CPU in modo trasparente.
 ]
 
-Solitamente la memoria riservata e poco di più di quella allocata.
-
-//aggiungere summary
+Solitamente la memoria riservata è poco di più di quella allocata. PyTorch gestisce automaticamente la memoria GPU tramite un allocatore interno.
 
 = Stream
 
-Solitamente ci sono una serie di _corsie_ su cui smalitre il traffico overo gli stream. Si possono sovrappore delle richieste di trasferimento e calcolo vero e proprio.
+Solitamente ci sono una serie di _corsie_ su cui smaltire il traffico ovvero gli stream. Si possono sovrapporre delle richieste di trasferimento e calcolo vero e proprio.
 
 Esiste anche qui il default stream (di default le cose lanciate su GPU vanno qua), inoltre il default stream è mutualmente esclusivo, blocca tutti gli altri stream (non bello).
 
-Usiamo la classe `torch.cuda.Stream` per la costruzione configurazione di stream.
+Usiamo la classe `torch.cuda.Stream` per la costruzione e configurazione di stream.
 ```python
-
 stream = torch.cuda.Stream(
-  device = True,
-  priority = 0, #priorità a livello di stream nello scheuling
+  device='cuda:0',
+  priority=0  # priorità a livello di stream nello scheduling (range: -1 a 0)
 )
 ```
 #esempio()[
@@ -67,55 +70,96 @@ stream = torch.cuda.Stream(
   x = torch.randn(1000,1000, device='cuda')
   y = torch.matmul(x,x)
 
-  stream1 = torch.cuda.Stream('cuda')
-  stream2 = torch.cuda.Stream('cuda')
-  with torch.cuda.stream(stream1):#passo l'esecuzione a stream1
-    #op stream1
+  stream1 = torch.cuda.Stream()
+  stream2 = torch.cuda.Stream()
+  with torch.cuda.stream(stream1): # passo l'esecuzione a stream1
+    # operazioni eseguite su stream1
+    a = torch.randn(1000, 1000, device='cuda')
   with torch.cuda.stream(stream2):
-    #op stream2
+    # operazioni eseguite su stream2
+    b = torch.randn(1000, 1000, device='cuda')
   ```
   Le esecuzioni di stream1 e stream2 sono davvero concorrenti
 ]
-Possiamo avere anche degli stream annidati (creazione di stream dentro il contesto di un altro stream). Lo stream interno vive solamente nel contesto del with interno, successivamente il contesto passa a quello esterno
+Possiamo avere anche degli stream annidati (creazione di stream dentro il contesto di un altro stream). Lo stream interno vive solamente nel contesto del `with` interno, successivamente il contesto passa a quello esterno.
 
-Esiste un metodo `wait.stream` che permette di sincronizarci con gli altri stream. Oltre agli eventi
+Esiste un metodo `wait_stream()` che permette di sincronizzarci con gli altri stream, oltre agli eventi.
 
 == Trasferimento dati efficiente
 
-Esistono due meccanismi ;
-- `pinned_memory` trasferire i dati in pinned_memory
-- `non_blocking` in modo asincrono, l'host non attende su quel trasferimento
+Esistono due meccanismi:
+- `pin_memory`: trasferire i dati in pinned memory
+- `non_blocking`: trasferimento in modo asincrono, l'host non attende su quel trasferimento
 
 === Pin memory
 
-`tensor.to(device, non_blocking)`. La pin memory può essere applicata ad un tensore per trasferirlo nella pinned.
-//aggiunge pinned memory immage
+`tensor.to(device, non_blocking=True)`. La pin memory può essere applicata ad un tensore per trasferirlo nella memoria pinned.
 
-Il codice che viene esegutio si blocca e aspetta `pin_memory` è quindi *blocking* per l'host.
-Possono essere creati anche dei tensori direttamente in pin memory già inizializzati come vogliamo
+La pinned memory è una memoria RAM che non può essere spostata dalla memoria virtuale (page-locked). Questo permette trasferimenti DMA (Direct Memory Access) più veloci tra CPU e GPU, poiché il driver non deve prima copiare i dati in un buffer intermedio.
+
+Il codice che viene eseguito si blocca e aspetta. `pin_memory` è quindi *blocking* per l'host.
+Possono essere creati anche dei tensori direttamente in pin memory già inizializzati:
+```py
+x = torch.randn(100, 100, pin_memory=True)
+```
 
 == Eventi
 
-All'interno di un kernel può essere messo un marker, ovvero `torch.cuda.Event()` e posso sincronizzare gli stream su un certo evento. Posso creare un interdipendenza tra eventi
+All'interno di un kernel può essere messo un marker, ovvero `torch.cuda.Event()` e posso sincronizzare gli stream su un certo evento. Posso creare un'interdipendenza tra eventi.
 
-`torch.cuda.syncronize` = sincronizza su tutto, host e strami, solitamente non si usa
+`torch.cuda.synchronize()` sincronizza su tutto, host e stream, solitamente non si usa.
 
-solitamente di una `strea.sync` o `event.sync`.
+Solitamente si usa `stream.synchronize()` o `event.synchronize()`.
 
 ```py
-x_cpu = torch.rand(pinend=True)
-x_gpu = device.to(non_blocking=True) #trasferimento asincrono
+x_cpu = torch.rand(100, 100, pin_memory=True)
+x_gpu = x_cpu.to('cuda', non_blocking=True) # trasferimento asincrono
 ```
 
-//aggiungere esempio sync tra stream
+#esempio()[
+  Sincronizzazione tra stream usando eventi:
+  ```py
+  stream1 = torch.cuda.Stream()
+  stream2 = torch.cuda.Stream()
+  event = torch.cuda.Event()
 
-//aggiungere esercizio
+  with torch.cuda.stream(stream1):
+    x = torch.randn(1000, 1000, device='cuda')
+    event.record() # registra l'evento su stream1
 
-Esempio in cui nelle fase di training uso degli stream in modo tale che se il batch N sta venendo computato, trasferisco il batch n+1 in GPU
+  with torch.cuda.stream(stream2):
+    stream2.wait_event(event) # attende che stream1 raggiunga l'evento
+    y = x + 1 # usa il risultato di stream1
+  ```
+]
 
-Ho un punto unico di uso dei dati model. Devo sgnaciare solamente l'esecuzione del trasferimento su un altro stream, ne bastano due.
+=== Esempio: Sovrapposizione di trasferimento e computazione
 
-In questo caso non possiamo elaborare un chunk di dati su uno stream in maniera indipendente. Qui non va bene in quanto il model deve consumare tutti i dati che passano
+Esempio in cui nella fase di training uso degli stream in modo tale che se il batch N sta venendo computato, trasferisco il batch N+1 in GPU:
 
-Intando che il model elabora un cnhunk paralelamente carichiamo in memoria GPU (asincrono)
+```py
+stream_compute = torch.cuda.Stream()
+stream_transfer = torch.cuda.Stream()
+
+for i, (inputs, targets) in enumerate(dataloader):
+  # Trasferisco il batch corrente su GPU in modo asincrono
+  with torch.cuda.stream(stream_transfer):
+    inputs_gpu = inputs.to('cuda', non_blocking=True)
+    targets_gpu = targets.to('cuda', non_blocking=True)
+
+  # Attendo che il trasferimento sia completato
+  stream_compute.wait_stream(stream_transfer)
+
+  # Eseguo il forward pass
+  with torch.cuda.stream(stream_compute):
+    output = model(inputs_gpu)
+    loss = criterion(output, targets_gpu)
+    loss.backward()
+```
+
+Ho un punto unico di uso dei dati (model). Devo sganciare solamente l'esecuzione del trasferimento su un altro stream, ne bastano due.
+
+In questo caso non possiamo elaborare un chunk di dati su uno stream in maniera indipendente. Qui non va bene in quanto il model deve consumare tutti i dati che passano.
+
+Intanto che il model elabora un chunk, parallelamente carichiamo in memoria GPU (asincrono) il successivo.
 
