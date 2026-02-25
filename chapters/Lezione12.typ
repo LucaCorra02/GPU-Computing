@@ -53,7 +53,7 @@ I tranformer come prima cosa, presentano una fase di *tokenizzazione* e *embeddi
 
   L'*output* è una lista di vettori densi:
   $
-    y_1, y_2, dots, y_N in RR^D
+    x_1, x_2, dots, x_N in RR^D
   $
 
 #esempio()[
@@ -125,35 +125,40 @@ I tranformer come prima cosa, presentano una fase di *tokenizzazione* e *embeddi
 
 L'attenzione è un meccanismo che permette al modello di combinare vettori di input con *pesi dipendenti dai dati*.
 
-Data una sequenza di $N$ vettori token:
+I dati vengono processati come un *insieme di vettori* (token), ognuno con $D$ features. Data una sequenza di $N$ vettori token ($N$ = dimensione del contesto):
 $
-  mb(x)_1, dots, mb(x)_N in RR^D
+  x_1, dots, x_N in RR^D
+$
+La matrice dei token è:
+$
+  mb(X) = mat(
+    x_(1,1), x_(1,2), dots.h, x_(1,D);
+    x_(2,1), x_(2,2), dots.h, x_(2,D);
+    dots.v, dots.v, dots.down, dots.v;
+    x_(N,1), x_(N,2), dots.h, x_(N,D);
+  ) = mat(mb(x)_1^T; mb(x)_2^T; dots.v; mb(x)_N^T) in underbrace(RR^(N times D), "N Tokens" times "D Features")
 $
 
-la matrice dei token è:
+Gli elementi *$x_(n i)$* dei token (celle della matrice) sono chiamati *feature*. Il blocco fondamentale di un Transformer è una funzione:
 $
-  mb(X) = mat(mb(x)_1^T; mb(x)_2^T; dots.v; mb(x)_N^T) in RR^(N times D)
+  tilde(X) = "TransformerLayer"(X)
 $
+con $tilde(mb(X)) in RR^(N times D)$ (stessa dimensionalità dell'input). L'idea è quella di andare a concatenare *più layer* di questo tipo, ognuno con *parametri indipendenti*, per costruire una rete profonda che trasforma progressivamente la rappresentazione dei token.
 
-Gli elementi $x_(n i)$ dei token sono chiamati *feature*. Il blocco fondamentale di un Transformer è una funzione:
-$
-  tilde(mb(X)) = "TransformerLayer"(mb(X))
-$
-con $tilde(mb(X)) in RR^(N times D)$ (stessa dimensionalità dell'input).
+I parametri di ogni layer possono essere appresi tramite backpropagation, ottimizzando una loss task-specific (es. cross-entropy per classificazione o generazione).
 
 === Calcolo delle similarità
 
-L'attenzione inizia calcolando le *similarità dot-product*:
+L'attenzione inizia calcolando le *similarità dot-product* tra tutti i token. Per ogni coppia di token *$m$* e *$n$*, si calcola:
 $
   s_(m n) = mb(x)_m^T mb(x)_n
 $
+il risultato $s_(m n)$ è un punteggio che indica quanto i due token sono *_affini_* o _simili_ tra loro. Un punteggio più alto indica una maggiore similarità.
 
-In forma matriciale (*matrice di similarità*):
+In forma matriciale (*matrice di similarità*) viene creata una matrice quadrata $N times N$, in modo da considerare tutte le coppie di token:
 $
   mb(S) = mb(X) mb(X)^T in RR^(N times N)
 $
-
-Un prodotto scalare elevato $arrow.r.double$ alta similarità.
 
 === Normalizzazione Softmax
 
@@ -167,32 +172,43 @@ $
   mb(A) = "Softmax"(mb(X) mb(X)^T)
 $
 
-Questo garantisce che le righe di $mb(A)$ sommino a 1 e che $a_(m n) >= 0$.
+#nota()[
+  La softmax normalizza i punteggi di similarità, garantendo due proprietà chiave:
+  - *Sommatoria a 1*: Tutte le righe di $mb(A)$ sommano a 1, quindi i *pesi di attenzione* rappresentano una *distribuzione di probabilità sui token*:
+  $
+    sum_(m=1)^N a_(m n) = 1, quad forall m in {1, dots, N}
+  $
+
+  - *Non negatività*: Tutti gli elementi $a_(m n) >= 0$. Questo significa che *ogni token contribuisce* positivamente *alla rappresentazione finale*, con un peso che riflette la sua rilevanza.
+]
 
 === Output del layer Transformer
 
 L'output è una combinazione pesata di tutti i vettori value:
 $
-  mb(y)_m = sum_(n=1)^N a_(m n) mb(x)_n
+  y_m = sum_(n=1)^N underbrace(mr(a_(m n)),"peso "\ "attenzione") underbrace(mb(w_n), "embedding" \ "token" n)
 $
 
 In forma matriciale:
 $
-  mb(Y) = mb(A) mb(X) = "Softmax"[mb(X) mb(X)^T] mb(X)
+  Y = mr(A) mb(X) = "Softmax"[mb(X) mb(X)^T] mb(X)
 $
 
 #informalmente()[
   Ogni $mb(y)_m$ è una *media pesata* di tutti gli $mb(x)_n$. L'attenzione apprende quali token sono rilevanti per ciascun output.
 ]
 
-Questo processo è chiamato *self-attention* perché la stessa sequenza $mb(X)$ viene usata come:
-- Query (cosa cerco)
-- Key (cosa è disponibile)
-- Value (l'informazione che recupero)
+=== Key, Query e Value
 
-=== Query, Key, Value: rendere l'attenzione apprendibile
+Siccome il calcolo precedente $S = X X^T$ considera solamente la similarità tra embedding (*similarità vettoriale*), non permette al modello di *apprendere* cosa significa similarità o considerare la similarità semantica.
 
-#nota()[
+Per questo motivo, nei Transformer si introducono *proiezioni lineari apprese* per query, key e value. Ogni token $x_n$ viene proiettato in tre spazi distinti:
+- *Query* (cosa cerco)
+- *Key* (cosa è disponibile)
+- *Value* (l'informazione che recupero)
+
+
+#informalmente()[
   *Analogia con il recupero di informazioni*: immagina di cercare un film online. Ogni film ha attributi descrittivi (vettore *key*) e un contenuto (vettore *value*). L'utente esprime le sue preferenze (vettore *query*). Il sistema confronta la query con tutte le key, trova la corrispondenza più vicina e restituisce il value.
 ]
 
@@ -203,32 +219,254 @@ $
   mb(V) = mb(X) mb(W)^((v)), quad mb(W)^((v)) in RR^(D times D_v)
 $
 
-La matrice di similarità diventa:
-$
-  mb(S) = mb(Q) mb(K)^T
-$
+Dove *$D_k$* e *$D_v$* sono le dimensioni delle query/key e value rispettivamente. Solitamente hanno una dimensione più piccola di $D$ per ridurre il costo computazionale. 
 
-e l'output:
-$
-  mb(A) = "Softmax"(mb(Q) mb(K)^T), quad mb(Y) = mb(A) mb(V)
-$
+#attenzione()[
+  $D_k$ e $D_q$ devono corrispondere per permettere il calcolo del prodotto scalare. $D_v$ può essere diverso, poiché rappresenta l'informazione che viene recuperata, non la similarità. Solitamente $D_v$ è molto simile a $D_k + D_v$
+]
 
-Questo permette al modello di *apprendere cosa significa similarità* e come rappresentare i value.
+La *matrice di similarità* diventa:
+$
+  S = mr(Q) mr(K)^T
+$
+Viene computato un dot-product tra ogni possibile di coppia di query e key, producendo una matrice $N times N$ di punteggi di similarità.
+
+Sucessivamente viene calcolata una somma pesata colonna per colonna. *L'output* finale è dato da:
+$
+  A = "Softmax"(mr(Q) mr(K)^T), quad mb(Y) = A mr(V)
+$
+Dove $A$ avrà una dimensione $N times N$ e $mb(Y)$ avrà dimensione $N times D_v$ (scegliendo $D_v = D$ otteniamo $mb(Y) in R^(N times D)$).
+
+Graficamente le operazioni possono essere rappresentate come segue:
+#align(center)[
+  #cetz.canvas({
+    import cetz.draw: *
+    
+    let box-width = 2.5
+    let box-height = 0.6
+    
+    // Input X
+    rect((0, 0), (box-width, box-height), stroke: black, fill: white, name: "X")
+    content((box-width/2, box-height/2), text(size: 11pt, weight: "bold", $mb(X) in R^(N times D)$))
+    
+    // Matrici di peso W^(q), W^(k), W^(v)
+    let y1 = 1.8
+    rect((-1.5, y1), (-0.3, y1 + box-height), stroke: blue.darken(20%), 
+         fill: blue.lighten(70%), name: "Wq")
+    content((-0.9, y1 + box-height/2), text(size: 10pt, $mb(W)^((q))$))
+    
+    rect((0.4, y1), (1.6, y1 + box-height), stroke: blue.darken(20%), 
+         fill: blue.lighten(70%), name: "Wk")
+    content((1.0, y1 + box-height/2), text(size: 10pt, $mb(W)^((k))$))
+    
+    rect((2.3, y1), (3.5, y1 + box-height), stroke: blue.darken(20%), 
+         fill: blue.lighten(70%), name: "Wv")
+    content((2.9, y1 + box-height/2), text(size: 10pt, $mb(W)^((v))$))
+    
+    // Frecce da X a W
+    line((box-width/2, box-height), (-0.9, y1), mark: (end: "stealth"))
+    content((-1.2, 1.2), text(size: 9pt, $mb(Q) in R^(D times D_q)$))
+    
+    line((box-width/2, box-height), (1.0, y1), mark: (end: "stealth"))
+    content((1.3, 1.3), text(size: 9pt, $mb(K) in R^(D times D_k)$))
+    
+    line((box-width/2, box-height), (2.9, y1), mark: (end: "stealth"))
+    content((3.3, 1.2), text(size: 9pt, $mb(V) in R^(D times D_v)$))
+
+    content((1.6, 3.4), text(size: 9pt, $in R^(N times N)$))
+
+    content((4.5, 2.1), text(size: 9pt, $W^v in R^(N times D_v)$))
+    
+    // MatMul (Q * K^T)
+    let y2 = 3.2
+    rect((-0.9, y2), (0.9, y2 + box-height), stroke: black, 
+         fill: rgb("#f4c9a6"), radius: 0.15cm)
+    content((0, y2 + box-height/2), text(size: 10pt, [mat mul]))
+    
+    line((-0.9, y1 + box-height), (-0.5, y2), mark: (end: "stealth"))
+    line((1.0, y1 + box-height), (0.5, y2), mark: (end: "stealth"))
+    
+    // Scale
+    let y3 = 4.4
+    rect((-0.9, y3), (0.9, y3 + box-height), stroke: black, 
+         fill: rgb("#fff8dc"), radius: 0.15cm)
+    content((0, y3 + box-height/2), text(size: 10pt, [scale]))
+    
+    line((0, y2 + box-height), (0, y3), mark: (end: "stealth"))
+    
+    // Softmax
+    let y4 = 5.6
+    rect((-0.9, y4), (0.9, y4 + box-height), stroke: black, 
+         fill: rgb("#b8e6b8"), radius: 0.15cm)
+    content((0, y4 + box-height/2), text(size: 10pt, [softmax]))
+    
+    line((0, y3 + box-height), (0, y4), mark: (end: "stealth"))
+    
+    // MatMul finale (A * V)
+    let y5 = 6.8
+    rect((-0.9, y5), (0.9, y5 + box-height), stroke: black, 
+         fill: rgb("#f4c9a6"), radius: 0.15cm)
+    content((0, y5 + box-height/2), text(size: 10pt, [mat mul]))
+    
+    line((0, y4 + box-height), (0, y5), mark: (end: "stealth"))
+    
+    // Freccia curva da V a mat mul finale
+    line((2.9, y1 + box-height), (2.9, y5 + box-height/2), stroke: (dash: "dashed"))
+    line((2.9, y5 + box-height/2), (0.9, y5 + box-height/2), mark: (end: "stealth"))
+    
+    // Output Y
+    let y6 = 8.2
+    rect((-0.5, y6), (0.5, y6 + box-height), stroke: black, fill: white)
+    content((0, y6 + box-height/2), text(size: 11pt, weight: "bold", $mb(Y)$))
+    
+    line((0, y5 + box-height), (0, y6), mark: (end: "stealth"))
+  })
+]
+
+#nota[
+  La matrice _value_ $V = W^v$, viene moltiplicata per la matrice di attenzione $A$ per produrre l'output finale $Y$, ovvero l'embedding arriccheto del contesto. Ogni riga di $Y$ è una combinazione pesata delle righe di $V$, con i pesi dati da $A$ (somma pesata vettoriale). 
+
+  Per ogni token $i$ (una riga della matrice output $Y$), il nuovo embedding $y_i$ è costruito prendendo un po' del valore di ogni token $j$ della sequenza, in base a quanto $i$ ha prestato attenzione a $j$:
+  $ 
+    mb(y)i = a(i,1) v_1 + a(i,2) v_2 + dots + a(i,N) v_N
+  $
+]
+
+
 
 === Scaled Dot-Product Self-Attention
 
-#attenzione()[
-  *Problema*: quando gli elementi dei vettori query e key hanno media 0 e varianza 1, il loro prodotto scalare ha varianza $D_k$. Un'alta varianza porta a input grandi per la softmax, che diventa molto piatta e produce *gradienti molto piccoli* (problema simile a sigmoid/tanh saturi).
 
-  *Soluzione*: dividere il punteggio di similarità per la deviazione standard $sqrt(D_k)$:
+
+$mr("Problema")$: Se gli elementi dei vettori query e key hanno media $0$ e varianza $1$, il loro prodotto scalare ha varianza $D_k$ (le varianze si sommano). Una varianza troppo alta porta i numeri in un intervallo molto ampio. 
+
+Un'alta varianza porta a input grandi per la softmax, che diventa molto piatta e produce *gradienti molto piccoli* (funzione esponenziale).
+
+La $mg("soluzione")$ è scalare i punteggi di similarità dividendo per $sqrt(D_k)$, che mantiene i valori in un intervallo più gestibile:
   $
-    "Attention"(mb(Q), mb(K), mb(V)) = "Softmax"(mb(Q) mb(K)^T / sqrt(D_k)) mb(V)
+    "Attention"(Q, K, V) = "Softmax"((Q K^T) / sqrt(D_k)) V
   $
 
-  Questo *stabilizza la softmax*, mantiene i gradienti sani e rende l'attenzione robusta all'aumentare della dimensionalità.
+Questa operazione permette di *stabilizza la softmax*, rendendo l'attenzione robusta all'aumentare della dimensionalità.
+
+#align(center)[
+  #cetz.canvas(length: 1cm, {
+    import cetz.draw: *
+    
+    // Funzione gaussiana
+    let gaussian(x, sigma) = {
+      calc.pow(calc.e, -calc.pow(x, 2) / (2 * calc.pow(sigma, 2))) / (sigma * calc.sqrt(2 * calc.pi))
+    }
+    
+    // Funzione per disegnare una curva gaussiana
+    let draw-gaussian(origin, sigma, scale, color, fill-tails: false) = {
+      let points = ()
+      let x-min = -3.0
+      let x-max = 3.0
+      let steps = 100
+      let dx = (x-max - x-min) / steps
+      
+      for i in range(steps + 1) {
+        let x = x-min + i * dx
+        let y = gaussian(x, sigma) * scale
+        points.push((origin.at(0) + x, origin.at(1) + y))
+      }
+      
+      // Disegna la curva
+      line(..points, stroke: (paint: color, thickness: 1.5pt))
+      
+      // Riempi le code se richiesto
+      if fill-tails {
+        // Coda sinistra
+        let left-points = ((origin.at(0) - 3, origin.at(1)),)
+        for i in range(steps + 1) {
+          let x = x-min + i * dx
+          if x < -1.5 {
+            let y = gaussian(x, sigma) * scale
+            left-points.push((origin.at(0) + x, origin.at(1) + y))
+          }
+        }
+        left-points.push((origin.at(0) - 1.5, origin.at(1)))
+        line(..left-points, stroke: none, fill: red.lighten(70%), close: true)
+        
+        // Coda destra
+        let right-points = ((origin.at(0) + 1.5, origin.at(1)),)
+        for i in range(steps + 1) {
+          let x = x-min + i * dx
+          if x >= 1.5 {
+            let y = gaussian(x, sigma) * scale
+            right-points.push((origin.at(0) + x, origin.at(1) + y))
+          }
+        }
+        right-points.push((origin.at(0) + 3, origin.at(1)))
+        line(..right-points, stroke: none, fill: red.lighten(70%), close: true)
+      }
+    }
+    
+    // --- Grafico sinistra: Without Scaling ---
+    set-origin((-8, 0))
+    
+    // Titolo
+    content((0, 3.8), text(size: 10pt, weight: "bold", [Senza Scaling]))
+    
+    // Assi
+    line((-3.2, 0), (3.2, 0), stroke: (paint: gray, thickness: 0.8pt))
+    line((0, 0), (0, 3), stroke: (paint: gray, thickness: 0.8pt), mark: (end: ">"))
+    
+    // Tick marks
+    for x in (-2, -1, 0, 1, 2) {
+      line((x, -0.1), (x, 0.1), stroke: (thickness: 0.8pt))
+      content((x, -0.4), text(size: 8pt, str(x)))
+    }
+    
+    // Gaussiana larga con code evidenziate
+    draw-gaussian((0, 0), 1.5, 6, black, fill-tails: true)
+    
+    // Label sotto
+    content((0, -1.5), text(size: 8pt)[
+      Variance = $D_k$. Large dot products push\ 
+      softmax into regions with #text(fill: red)[vanishing gradients].
+    ])
+    
+    // Freccia verso l'alto
+    line((0, 3.5), (0, 3.1), mark: (start: "stealth"), stroke: (thickness: 1.2pt))
+    
+    // --- Box centrale: Formula ---
+    set-origin((4, 0))
+    
+    rect((-1.8, 1.2), (1.8, 2.2), stroke: (paint: blue.darken(20%), thickness: 1.2pt), 
+         fill: blue.lighten(90%), radius: 0.1cm)
+    content((0, 1.7), text(size: 10pt, $"Score" = (mb(Q) mb(K)^T) / sqrt(D_k)$))
+    
+    // --- Grafico destra: With Scaling ---
+    set-origin((4, 0))
+    
+    // Titolo
+    content((0, 3.8), text(size: 10pt, weight: "bold", [ Con Scaling]))
+    
+    // Freccia verso l'alto
+    line((0, 3.5), (0, 3.1), mark: (start: "stealth"), stroke: (thickness: 1.2pt))
+    
+    // Assi
+    line((-3.2, 0), (3.2, 0), stroke: (paint: gray, thickness: 0.8pt))
+    line((0, 0), (0, 3), stroke: (paint: gray, thickness: 0.8pt), mark: (end: ">"))
+    
+    // Tick marks
+    for x in (-2, -1, 0, 1, 2) {
+      line((x, -0.1), (x, 0.1), stroke: (thickness: 0.8pt))
+      content((x, -0.4), text(size: 8pt, str(x)))
+    }
+    
+    // Gaussiana stretta (più alta e concentrata)
+    draw-gaussian((0, 0), 0.7, 6, black)
+    
+    // Label sotto
+    content((0, -1.5), text(size: 8pt)[
+      Variance = 1. Dividing by $sqrt(D_k)$\
+      stabilizes the training dynamics.
+    ])
+  })
 ]
-
-Questa versione scalata è la *forma finale* della self-attention dot-product usata nei Transformer.
 
 == Multi-Head Attention
 
