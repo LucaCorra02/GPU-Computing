@@ -477,35 +477,47 @@ Una singola testa di attenzione può modellare solo *un tipo di relazione* alla 
 - dipendenze a lunga distanza
 - relazioni lessicali
 
-*Idea*: usare più teste di attenzione in parallelo, ognuna con le proprie proiezioni apprese:
+*Idea*: usare più teste di attenzione in parallelo, ognuna con le proprie proiezioni apprese. Fissando il numero di teste $H$, ogni testa $h$ calcola le proprie query, key e value:
 $
-  mb(Q)_h = mb(X) mb(W)_h^((q)), quad
-  mb(K)_h = mb(X) mb(W)_h^((k)), quad
-  mb(V)_h = mb(X) mb(W)_h^((v))
+  Q_h = X W_h^((q)), quad
+  K_h = X W_h^((k)), quad
+  V_h = X W_h^((v))
 $
 
 Ogni testa calcola la scaled dot-product attention:
 $
-  mb(H)_h = "Attention"(mb(Q)_h, mb(K)_h, mb(V)_h)
+  mb(H)_h = "Attention"(Q_h, K_h, V_h)
 $
+
 
 Le teste vengono poi *concatenate* e proiettate con una trasformazione lineare finale:
 $
-  mb(Y)(mb(X)) = "Concat"(mb(H)_1, dots, mb(H)_H) mb(W)^((o))
+  Y (X) = "Concat"(mb(H)_1, dots, mb(H)_H) W^((o))
 $
+Quello che accade è che ogni testa impara a focalizzarsi su *aspetti diversi* della sequenza, catturando così una varietà di relazioni e pattern contemporaneamente. I _cambiamenti_ proposti da ogni testa vengono combinati tra di loro per produrre un embedding finale più ricco e informativo.
 
 #nota()[
-  *Dimensioni*: ogni testa produce $mb(H)_h in RR^(N times D_v)$. Con $H$ teste:
+  Ognuna delle $H$ teste produce una matrice di attenzione $H_h$: 
+  $
+    mb(H)_h in RR^(N times D_v)
+  $
+  Le matrici di tutte le teste vengono concatenate lungo la dimensione delle features, producendo una matrice di dimensione $N times (H D_v)$:
   $
     "Concat"(mb(H)_1, dots, mb(H)_H) in RR^(N times (H D_v))
   $
-  La proiezione finale $mb(W)^((o)) in RR^(H D_v times D)$ riporta al embedding dimension del modello.
+  La proiezione finale $W^((o)) in RR^(H D_v times D)$ riporta al embedding dimension del modello. Il risultato $Y in N times D$, uguale all'input, permettendo di concatenare più layer Transformer.
 
-  Scegliendo $D_v = D / H$, la matrice concatenata ha dimensione $(N times D)$, uguale all'input. Tutte le matrici $mb(W)_h^((q)), mb(W)_h^((k)), mb(W)_h^((v)}, mb(W)^((o))$ vengono apprese congiuntamente.
+
+
+  Scegliendo *$D_v = D / H$*, la matrice concatenata ha dimensione $(N times D)$, uguale all'input.
 ]
 
-#informalmente()[
-  Le diverse teste imparano *modi diversi di attendere*. Il modello cattura così più tipi di struttura contemporaneamente, in modo analogo ai filtri multipli in un layer CNN.
+#attenzione()[
+  Tutte le matrici: 
+  $
+    W_h^((q)), W_h^((k)), W_h^((v)) in RR^(D times D_v) "e" W^((o)) in RR^(H D_v times D)
+  $ 
+  vengono *apprese congiuntamente*.
 ]
 
 == Self-Attention e Cross-Attention
