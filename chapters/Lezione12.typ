@@ -2,7 +2,7 @@
 
 = Transformer
 
-I *Transformer* sono una delle architetture più importanti nel deep learning moderno, introdotti da Vaswani et al. nel 2017 nell'articolo _"Attention Is All You Need"_.
+I *Transformer* sono una delle architetture più importanti nel deep learning moderno, introdotti recentemente nel $2017$.
 
 #informalmente()[
   Un Transformer prende un insieme di vettori in uno spazio di rappresentazione e li *trasforma* in un altro insieme di vettori:
@@ -10,14 +10,13 @@ I *Transformer* sono una delle architetture più importanti nel deep learning mo
   - Stessa dimensionalità
   - Nuovo spazio di rappresentazione più ricco
 
-  L'obiettivo è produrre una rappresentazione interna più espressiva, adatta a compiti a valle (classificazione, generazione, ecc.).
+  L'obiettivo è produrre una rappresentazione interna più espressiva, adatta a diversi compiti (classificazione, generazione, ecc.).
 ]
 
-== Perché i Transformer sono importanti
+Essi si basano su un meccanismo fondamentale: *l'attenzione*. Tale oggetto, permette al modello di decidere su cosa concentrarsi. Non tutte le parti di un input sono ugualmente rilevanti. L'attenzione darà *pesi diversi* a diverse parti dell'input, permettendo al modello di focalizzarsi sulle informazioni più importanti per il compito.
 
-/ Attenzione come meccanismo centrale: il meccanismo di *attenzione* permette al modello di decidere su cosa concentrarsi. Non tutte le parti di un input sono ugualmente rilevanti.
-
-/ Scalabilità: i Transformer si mappano efficientemente su hardware parallelo massivo (GPU). Modelli con $10^12$ parametri mostrano *capacità emergenti*, talvolta descritte come primi segnali verso l'intelligenza artificiale generale (AGI).
+Le pricnipali caratteristiche dei Transformer sono:
+/ Scalabilità: i Transformer si mappano efficientemente su hardware parallelo (GPU). Modelli con $10^12$ parametri mostrano *capacità emergenti*, talvolta descritte come primi segnali verso l'intelligenza artificiale generale (AGI).
 
 / Versatilità: le architetture Transformer sono state estese con successo a:
   - Testo (NLP)
@@ -29,30 +28,100 @@ I *Transformer* sono una delle architetture più importanti nel deep learning mo
 
 #nota()[
   Prima dei Transformer, i modelli di NLP più diffusi erano:
-  - *Bag of Words (BoW)*: ignora l'ordine delle parole, non può esprimere il contesto.
+  - *Bag of Words (BoW)*: ignora l'ordine delle parole, non può esprimere il contesto. In questa tecnica abbiamo un vocabolario fissato. Ogni parola è rappresentata da un indice intero, e una frase è rappresentata da un vettore di conteggio (o frequenza) delle parole presenti. Non cattura la struttura sintattica o semantica del testo.
+
   - *Reti Neurali Ricorrenti (RNN)*: processano il testo sequenzialmente, difficili da parallelizzare e soggette a dimenticare informazioni a lunga distanza.
 
   I Transformer superano tutti questi limiti grazie alla self-attention.
 ]
 
-=== Dal testo agli embedding
+== Testo -> Embedding
 
-Il testo viene prima convertito in vettori densi attraverso:
+Una parte fondamentale di qualsiasi modello di NLP è la *rappresentazione del testo*. I Transformer non fanno eccezione. Il testo viene convertito in vettori densi (embedding) che catturano il significato semantico.
+
+I tranformer come prima cosa, presentano una fase di *tokenizzazione* e *embedding*:
 + *Tokenizzazione*: il testo viene suddiviso in token (parole, sottoparole o caratteri).
-+ *Vocabulary mapping*: ogni token riceve un identificatore intero univoco.
-+ *Embedding layer*: ogni ID viene mappato a un vettore denso tramite una matrice appresa:
++ *Vocabulary mapping*: ogni token riceve un identificatore intero univoco. La frase originale viene convertita in una sequenza di ID:
   $
-    mb(E) in RR^(K times D)
+    x_1, x_2, dots, x_N in {0, dots, K-1}
   $
-  dove $K$ è la dimensione del vocabolario e $D$ è la dimensione dell'embedding.
++ *Embedding layer*: ogni ID viene mappato a un vettore denso tramite una matrice $W$ appresa:
+  $
+    W in RR^(K times D)
+  $
+  dove $K$ è la dimensione del vocabolario e $D$ è la dimensione dell'embedding (features). Viene eseguita una semplice operazione di *lookup*, dove l'ID del token viene usato come indice per estrarre il corrispondente vettore di embedding dalla matrice $W$:
+
+  L'*output* è una lista di vettori densi:
+  $
+    y_1, y_2, dots, y_N in RR^D
+  $
+
+#esempio()[
+  Consideriamo un vocabolario di $K=5$ token e embedding di dimensione $D=4$. La matrice di embedding è:
+
+  #align(center)[
+    #cetz.canvas({
+      import cetz.draw: *
+      
+      // Matrice W
+      let cell-width = 0.8
+      let cell-height = 0.6
+      
+      // Disegna la matrice W
+      for i in range(5) {
+        for j in range(4) {
+          let x = j * cell-width
+          let y = -i * cell-height
+          rect((x, y), (x + cell-width, y + cell-height), stroke: black)
+          content((x + cell-width/2, y + cell-height/2), text(size: 9pt, $w_(#i #j)$))
+        }
+      }
+      
+      // Label W
+      content((-0.6, -1.2), $mb(W) =$)
+      
+      // Dimensioni
+      content((1.6, 1), text(size: 9pt, $D=4$))
+      content((-0.6, -2.3), text(size: 9pt, $K=5$))
+      
+      // Freccia e lookup
+      line((3.8, -1.2), (5.0, -1.2), mark: (end: "stealth"))
+      content((4.4, -0.9), text(size: 8pt, [lookup]))
+      
+      // Token ID
+      content((5.5, -1.2), text(size: 10pt, [ID = 2]))
+      
+      // Freccia verso vettore risultante
+      line((6.2, -1.2), (7.4, -1.2), mark: (end: "stealth"))
+      
+      // Vettore risultante (riga 2 della matrice)
+      for j in range(4) {
+        let x = 7.6 + j * cell-width
+        let y = -1.2 + cell-height/2
+        rect((x, y - cell-height/2), (x + cell-width, y + cell-height/2), 
+             stroke: black, fill: rgb("#e8f4f8"))
+        content((x + cell-width/2, y), text(size: 9pt, $w_(2 #j)$))
+      }
+      
+      // Label vettore
+      content((9.5, -0.2), text(size: 9pt, $mb(y) in RR^4$))
+    })
+  ]
+
+  Dato un token con ID = 2, l'embedding corrispondente è semplicemente la *terza riga* della matrice (indice 2):
+  $
+    mb(y) = [w_(2 0), w_(2 1), w_(2 2), w_(2 3)]^T
+  $
+
+  Questa operazione è estremamente efficiente: non richiede moltiplicazioni, solo un accesso indicizzato alla memoria.
+]
+
+
+== Self-Attention
 
 #attenzione()[
   Un embedding *statico* è insufficiente: la parola "banca" ha significati diversi in contesti diversi ("banca del fiume" vs "conto in banca"). La *self-attention* permette a ogni token di aggiornare la propria rappresentazione guardando tutti gli altri token nella sequenza.
 ]
-
-== Self-Attention
-
-=== Che cos'è l'attenzione?
 
 L'attenzione è un meccanismo che permette al modello di combinare vettori di input con *pesi dipendenti dai dati*.
 
