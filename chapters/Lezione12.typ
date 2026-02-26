@@ -749,7 +749,7 @@ Ogni layer del decoder contiene:
 + MLP position-wise
 + Connessione residua + LayerNorm
 
-/ Masked self-attention: garantisce che un token possa attendere *solo ai token precedenti* (maschera causale). Nessun accesso alle informazioni future.
+/ Masked self-attention: garantisce che un token possa attendere *solo ai token precedenti* (maschera causale). Nessun accesso alle informazioni future, altrimenti il modello non imparerebbe niente.
 
 #esempio()[
   *GPT (Generative Pretrained Transformer)*: il decoder apprende le probabilità condizionali:
@@ -761,15 +761,13 @@ Ogni layer del decoder contiene:
   - Si campiona $x_n$, si appende alla sequenza, si ripete.
 ]
 
-==== Cosa apprende il decoder
-
 Il decoder esegue *generazione autoregressiva*. Per ogni posizione $t$:
 - Attende ai token generati in precedenza.
 - Opzionalmente attende agli output dell'encoder (in task sequence-to-sequence).
 - Predice la distribuzione di probabilità del token successivo.
 - L'ultimo layer produce logit → softmax → probabilità del prossimo token.
 
-Questo abilita: generazione di testo, traduzione, sistemi di dialogo, generazione di codice.
+Tipologie di task: generazione di testo, traduzione, sistemi di dialogo, generazione di codice.
 
 === Encoder vs Decoder: confronto
 
@@ -825,6 +823,8 @@ Questo abilita: generazione di testo, traduzione, sistemi di dialogo, generazion
 
 Per verificare il corretto funzionamento di un Transformer end-to-end, si usa spesso un task sintetico: il modello deve *copiare una sequenza*.
 
+L'idea è che se il modello non riesce a ricopiare una sequenza in modo corretto allora sono presenti dei bug nel codice.
+
 === Token speciali
 
 / `PAD = 0`: padding
@@ -840,16 +840,24 @@ Sia $S$ la lunghezza della sequenza sorgente. Un campione contiene:
 $
   "src" = [x_1, x_2, dots, x_S]
 $
+La nostra sequenza di token.
 
 *Decoder input (shifted right)*:
 $
-  "decoder\_input" = ["BOS", x_1, x_2, dots, x_S]
+  "decoder_input" = ["BOS", x_1, x_2, dots, x_S]
 $
+In modo tale che il decoder sappia da dove deve iniziare a generare la sequenza, in questo caso dal token `BOS`.
 
 *Label (next-token targets)*:
 $
   "label" = [x_1, x_2, dots, x_S, "EOS"]
 $
+
+#esempio()[
+  Data $S = ["BOS", C,I,A,O]$:
+  - Il modello parte a leggere `BOS` è deve prevedere `C` e cosi via
+  - Alla fine leggendo `BOS, C, I, A, O` deve prevedere `EOS`
+]
 
 #informalmente()[
   Questo task sintetico è utile perché:
@@ -860,21 +868,58 @@ $
 
 === Training loop (teacher forcing)
 
+Supponiamo di avere un batch di $B$ frasi:
+- Ogni frase è lunga $T$
+- Vocabolario di $K$ parole
+
 Per ogni batch:
-+ *Costruire le maschere* (padding + causale per il decoder): `src_mask`, `tgt_mask`
-+ *Encoder* costruisce la memoria: $mb(E) = "encode"("src", "src\_mask")$
-+ *Decoder* predice tutti i time step in parallelo: $mb(D) = "decode"(mb(E), "src\_mask", "decoder\_input", "tgt\_mask")$
-+ *Proiezione* al vocabolario: $"logits" in RR^(B times T times K)$
++ *Costruire le maschere*:
+  - `src_mask`(Machera dell'encorder): Serve solo per il padding. Se una frase è più corta di $T$ viene riempita con dei token speciali `<pad>`. Tali posizioni verrano ignorate dall'encoder.
+
+  - `tgt_mask`(Maschera del decoder): Combina il padding e la maschera casuale (matrice triangolare). Non permette al decoder di guardare i token successivi durante le predizione.
+
++ *Encoder* costruisce la memoria:
+  $
+    mb(E) = "encode"("src", "src_mask")
+  $
+  L'input sono i token originali. Il risultato è una matrice densa $E$ che contiene gli embeddings.
+
++ *Decoder* predice tutti i time step in parallelo:
+
+  $
+    D = "decode"(mb(E), "src_mask", "decoder_input", "tgt_mask")
+  $
+  #nota()[
+    Il decoder *non* genera una parola alla volta, ma gli viene data in pasto l'intera sequenza sfalsata `decoder_input`. Grazie alla `tgt_mask` viene calcolata l'attenzione parola per parola, ogni volta mascherando cioò che non è il contesto. Il calcolo avviene *contemporaneamente*.
+  ]
+  L'output è una matrice $D$ contenete le rappresentazioni finali dei decoder per ogni singola posizione della frase.
+
++ *Proiezione* al vocabolario: $"logits" in RR^(B times T times K)$. Il Decoder restituisce dei vettori di dimensione $D$. Siccome vogliamo delle parole dobbiamo proiettarle nello spazio più ampio ovvero $K$
+
+
+
 + *Ottimizzazione* con cross-entropy su tutte le posizioni:
   $
     cal(L) = sum_(b,t) "CE"("logits"_(b,t), "label"_(b,t))
   $
+  La loss:
+  - Prende i punteggi generati al passo precedente per la posizione $t$.
+
+  - Guarda qual era la vera parola successiva.
+
+  - Se il modello aveva dato un punteggio alto alla parola giusta, la loss (l'errore) scende. Se aveva dato un punteggio alto a una parola sbagliata, la loss sale.
+
+  - La sommatoria $sum_(b,t)$ significa semplicemente che calcoliamo questo errore per *ogni parola* ($t$) *in ogni frase* ($b$) del nostro batch, e facciamo una media.
+
+$L$ è l'errore totale. Da qui parte la backpropagation per aggiornare i pesi.
+
+
 
 === Greedy Decoding (inference)
 
 + Inizia con $y_1 = "BOS"$
 + Poi ripete:
-  - predice il prossimo token con $arg max$ sui logit
+  - predice il prossimo token con $arg max$ sui logit (predizione next token più alta)
   - appende il token alla sequenza
   - si ferma quando viene generato `EOS` (o si raggiunge la lunghezza massima)
 
